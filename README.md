@@ -1,9 +1,11 @@
-# Guided by Voices: Socially conditioned associations shape memory for speech
+# Socially-Guided Allocation of Attention in the Memory Encoding of Spoken Language
 
-This repository contains all materials required to run the experiment included in the manuscript *Guided by Voices: Socially conditioned associations shape memory for speech* (William Clapp \& Meghan Sumner, 2025).
+This repository contains all materials required to reconstruct analyses and run the three experiments associated with my dissertation *Socially-Guided Allocation of Attention in the Memory Encoding of Spoken Language*.
 
-The experiment is a study/test recognition memory experiment with spoken sentences heard in both blocks. To run the experiment in your own browser, follow [this link](https://willclapp.github.io/socially-guided-attention/exp/exp.html).
+To reconstruct statistical analyses, download the `analysis` folder. The analysis for each chapter is in a separate `.Rmd` file. The only thing you should need to change is the working directory, which should point to `analysis`. Data is stored in the `Data` directory. Main experiment results are stored in the files `C2.csv`, `C3.csv`, and `C4.csv`. The other files there are for additional analyses. The `Models` directory includes `.txt` printouts of all of the model summaries reported in the dissertation.
 
-Data and analysis scripts are also publicly available on OSF, [linked here](https://osf.io/hea2j/).
+The experiments all use the study/test recognition memory paradigm with spoken sentences heard in both blocks. To run the experiments in your own browser, follow these links for [Chapter 2](https://willclapp.github.io/socially-guided-attention/exp/exp.html), [Chapter 2](https://willclapp.github.io/socially-guided-attention/exp/exp.html), or [Chapter 4](https://willclapp.github.io/socially-guided-attention/exp/exp.html).
+
+
 
 
