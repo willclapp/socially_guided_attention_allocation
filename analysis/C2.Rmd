@@ -1,0 +1,256 @@
+---
+title: "Chapter 2"
+author: "William Clapp"
+date: "2024-04-14"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+library(tidyverse)
+library(lme4)
+library(lmerTest)
+library(patchwork)
+library(see)
+library(emmeans)
+library(ggdist)
+library(car)
+theme_set(theme_bw())
+```
+
+
+## Variables
+
+#### Dependent Variables
+
+* Hit rate --- How often did a participant correctly recognize sentences from the study block as repeated? Coded with the variable `correct`, where a hit is 1 and a miss is 0. 
+* False alarm rate --- How often did a participant incorrectly identify new sentences as old? Coded with the variable `correct`, where a correct rejections is 1 and a false alarm is 0.
+* Accuracy --- Only used on Exp. 3, where both the correct and incorrect options were presented on each trial. How often did a participant select the correct image? Coded with the variable `correct`, where a correct choice is labeled 1 and incorrect is labeled 0.
+* D' --- Z-transformed difference between hit rate and false alarm rate, calculated within `repVoice` for each participant, and coded as `d_repVoice`. 
+* logRT --- Natural log of reaction time, measured in ms from the stimulus offset. Only analyzed on hits.
+
+#### Independent Variables
+
+* `repeated` --- Labeled `TRUE` if a sentence was heard in the study block and `FALSE` if not. Corresponds to old/new. This was used to split data into subsets for separate analysis of hits/false alarms, and not analyzed directly.
+* `repVoice` --- Labeled `SAME` for sentences that were repeated by the same talker as produced them in the study block, `DIFF` for sentences repeated by a different talker than produced them in the study block, and `NONE` for sentences that were not heard in the study block. This variable is only really analyzed with `NONE` cases filtered out, so it's effectively a binary categorical variable, which we sum-coded.
+* `condition` --- Between-subjects attention condition. Labeled `Full` for full attention and `Divided` for divided attention. Sum-coded.
+* `rc_lag` --- How many trials elapsed between a sentence's first and second presentations? Used mostly as a control, since this variable is less obviously meaningful than it would be in a continuous recognition memory experiment. Rescaled from 0--1 and mean-centered. 
+* `rc_order` --- What was the serial order of the trial? Also thought of as a control; rescaled and mean-centered.
+* `rc_duration` --- How long was the stimulus in ms? Used as a control for RT analysis in Exp. 1; rescaled and mean-centered.
+
+#### Random Variables
+N.b. Final random effects structures were determined by beginning with a sensible structure (i.e. there's a principled reason to believe a random effect would cause variance), and then if the model did not convergence, removing the effect with the lowest variance. Where it was necessary to remove parameters, previous versions of the RE structure are shown but commented out, along with the variance of the removed parameter.
+
+* `workerid` --- Unique anonymous code for each participant.
+* `code` --- Unique code for each stimulus sentence. 
+
+
+## Preprocessing
+
+Load data
+```{r}
+setwd("LOCAL_DIRECTORY")
+
+df.c2 <- read.csv("Data/C2.csv") 
+```
+
+Separate into subset DFs for analysis.
+
+Experiment 1
+```{r message=FALSE}
+df.c2$repVoice = relevel(as.factor(df.c2$repVoice), ref="SAME")
+df.c2$condition = relevel(as.factor(df.c2$condition), ref="Full")
+
+# For False Alarms
+df.c2_new <- df.c2 %>%
+  filter(repVoice == "NONE")
+# To get labels to show up correctly on plots
+df.c2 <- df.c2 %>%
+  mutate(rep_cond = as.factor(paste(condition, repVoice, sep="\n")),
+         rc_lag = as.numeric(rc_lag)) %>%
+  filter(repVoice != "NONE")
+df.c2$rep_cond <- factor(df.c2$rep_cond, levels = c("Full\nSAME", "Full\nDIFF", "Full\nNONE", "Divided\nSAME", "Divided\nDIFF", "Divided\nNONE"))
+# For Hits
+df.c2_old <- df.c2 %>%
+  filter(repeated=='TRUE', repVoice != "NONE")
+# For d'
+df.c2_d <- df.c2 %>%
+  group_by(workerid, condition, repVoice, d_repVoice) %>%
+  summarize(d_repVoice = mean(d_repVoice))
+# For rt
+df.c2_rt <- df.c2 %>%
+  filter(repeated=="TRUE", correct==1, rt > 0) %>%
+  mutate(logRT = log(rt))
+rtMean = mean(df.c2_rt$logRT)
+rtSD = sd(df.c2_rt$logRT)
+df.c2_rt <- df.c2_rt %>%
+  filter(logRT < rtMean + (2.5 * rtSD), logRT > rtMean - (2.5 * rtSD))
+```
+
+
+## Plots
+
+### Plot functions
+
+Halfeye plots for Hits, D', and false alarms
+```{r}
+halfeye <- function(x_var, y_var, df, c_vec, ylim, title, ylab, xlab, adj, wid, sub_n, dir) {
+  p1 <- df %>%
+    group_by(workerid, .data[[x_var]]) %>%
+    summarise(var = sub_n + dir * mean(.data[[y_var]])) %>%
+    ggplot(mapping = aes(x = .data[[x_var]], y = var)) +
+      stat_halfeye(side="left", alpha=0.5, adjust = 0.75, width = 0.5, aes(color=.data[[x_var]], fill=.data[[x_var]])) +
+      geom_boxplot(notch=TRUE, outlier.shape=NA, width = wid, aes(color=.data[[x_var]])) +
+      scale_color_manual(values = c_vec) +
+      scale_fill_manual(values = c_vec) +
+      stat_summary(fun.y="mean", size = 0.2, shape = 5, aes(color=.data[[x_var]])) +
+      theme(legend.position = "none") +
+      coord_cartesian(ylim=ylim) +
+      labs(title=title, y=ylab, x=xlab)
+
+  p2 <- df %>%
+    group_by(workerid, .data[[x_var]]) %>%
+    summarise(var = sub_n + dir * mean(.data[[y_var]])) %>%
+    ggplot(aes(x = .data[[x_var]], y = var, fill = .data[[x_var]])) +
+      scale_fill_manual(values=c_vec) +
+      scale_color_manual(values=c_vec) +
+      geom_jitter(width=0.07, height=0.02, alpha=0.15, aes(color=.data[[x_var]])) +
+      coord_cartesian(ylim=ylim) +
+      theme_void() +
+      labs(x = "", y = "")+
+      theme(legend.position="none")
+  p=p1 + inset_element(p2,left = 0+adj,bottom = 0,right = 1+adj,top = 1)
+  p
+}
+```
+
+Plots for RT
+```{r}
+rt <- function(x_var, df, c_vec, title, ylab, xlab) {
+  p_rt <- df %>% 
+    group_by(.data[[x_var]]) %>% 
+    summarise(mean = mean(logRT), sd = sd(logRT), n = n()) %>% 
+    mutate(ci_l = mean - (1.96 * (sd / sqrt(n)))) %>% 
+    mutate(ci_h = mean + (1.96 * (sd / sqrt(n)))) %>% 
+    ggplot(mapping = aes(x = .data[[x_var]], y = mean)) +
+      geom_errorbar(aes(ymin=ci_l, ymax=ci_h, color = .data[[x_var]]), width=.3) +
+      geom_point(aes(color = .data[[x_var]]), size=2) +
+      theme(legend.position = "none") +
+      scale_color_manual(values = c_vec) +
+      labs(title=title, y=ylab, x=xlab)
+  p_rt
+}
+```
+
+### Plots
+
+```{r warning=FALSE, message=FALSE}
+c_Full_SAME = "#231575"
+c_Full_DIFF = "#7c6be3"
+c_Divided_SAME = "#c70202"
+c_Divided_DIFF = "#fc4e4e"
+c_vec = c(c(c_Full_SAME, c_Full_DIFF, c_Divided_SAME, c_Divided_DIFF))
+
+p_hit <- halfeye("rep_cond", "correct", df.c2_old, c_vec, c(0,1), "Hits", "Proportion Hits", "Condition; RepVoice", 0.05, 0.2, 0, 1)
+p_fa <- halfeye("condition", "correct", df.c2_new, c(c_Full_DIFF, c_Divided_DIFF), c(0,1), "False Alarms", "Proportion False Alarms", "Condition", 0.1, 0.2, 1, -1)
+p_d <- halfeye("rep_cond", "d_repVoice", df.c2, c_vec, c(-.5,3.25), "D'", "D'", "Condition; RepVoice", 0.05, 0.2, 0, 1)
+p_rt <- rt("rep_cond", df.c2_rt, c_vec, "Latency", "logRT", "Condition; RepVoice")
+
+c2 <- p_hit| p_fa | p_d  | p_rt
+c2
+```
+
+
+## Statistics
+
+### Exp. 1
+
+Set contrasts
+```{r}
+df.c2$repVoice <- droplevels(df.c2$repVoice)
+df.c2_old$repVoice <- droplevels(df.c2_old$repVoice)
+df.c2_d$repVoice <- droplevels(df.c2_d$repVoice)
+df.c2_rt$repVoice <- droplevels(df.c2_rt$repVoice)
+
+contrasts(df.c2_d$repVoice) <- contr.Sum(levels(df.c2_d$repVoice))
+contrasts(df.c2_d$condition) <- contr.Sum(levels(df.c2_d$condition))
+contrasts(df.c2_old$repVoice) <- contr.Sum(levels(df.c2_old$repVoice))
+contrasts(df.c2_old$condition) <- contr.Sum(levels(df.c2_old$condition))
+contrasts(df.c2_new$condition) <- contr.Sum(levels(df.c2_new$condition))
+contrasts(df.c2_rt$repVoice) <- contr.Sum(levels(df.c2_rt$repVoice))
+contrasts(df.c2_rt$condition) <- contr.Sum(levels(df.c2_rt$condition))
+```
+
+D'
+```{r}
+m.c2_d <- lmer(d_repVoice ~ repVoice * condition + (1 | workerid),
+                data = df.c2_d)
+summary(m.c2_d)
+
+emm.d = emmeans(m.c2_d, specs = pairwise ~ condition:repVoice)
+summary(emm.d)
+
+```
+
+Hits
+```{r}
+# m.c2_hit_1 <- glmer(correct ~ repVoice * condition * rc_lag + rc_order + repVoice:rc_order + condition:rc_order + repVoice:condition:rc_order +
+#                    (1 + repVoice | workerid) + (1 + repVoice * condition | code),
+#                    control = glmerControl(optimizer="bobyqa", optCtrl = list(maxfun = 800000)),
+#                    family = "binomial",
+#                    data = df.c2_old)
+#
+# # Remove repVoice | workerid, variance = 0.0001074
+# m.c2_hit_2 <- glmer(correct ~ repVoice * condition * rc_lag + rc_order + repVoice:rc_order + condition:rc_order + repVoice:condition:rc_order +
+#                    (1 | workerid) + (1 + repVoice * condition | code),
+#                    control = glmerControl(optimizer="bobyqa", optCtrl = list(maxfun = 800000)),
+#                    family = "binomial",
+#                    data = df.c2_old)
+# Remove repVoice:condition | code, variance = 0.005835
+
+m.c2_hit_3 <- glmer(correct ~ repVoice * condition * rc_lag + rc_order + repVoice:rc_order + condition:rc_order + repVoice:condition:rc_order +
+                   (1 | workerid) + (1 + repVoice + condition | code),
+                   control = glmerControl(optimizer="bobyqa", optCtrl = list(maxfun = 800000)),
+                   family = "binomial",
+                   data = df.c2_old)
+summary(m.c2_hit_3)
+
+emm.hit = emmeans(m.c2_hit_3, specs = pairwise ~ condition:repVoice)
+summary(emm.hit)
+```
+
+RT
+```{r}
+# m.c2_rt_1 <- lmer(logRT ~ repVoice * condition * rc_lag + rc_order + rc_dur + repVoice:rc_order + condition:rc_order + repVoice:condition:rc_order + repVoice:rc_dur + condition:rc_dur + repVoice:condition:rc_dur +
+#                     (1 + repVoice | workerid) + (1 + repVoice * condition | code),
+#                  control = lmerControl(optimizer="bobyqa", optCtrl = list(maxfun = 800000)),
+#                  data = df.c2_rt)
+#
+# # Remove repVoice | workerid, variance = 3.841e-05
+# m.c2_rt_2 <- lmer(logRT ~ repVoice * condition * rc_lag + rc_order + rc_dur + repVoice:rc_order + condition:rc_order + repVoice:condition:rc_order + repVoice:rc_dur + condition:rc_dur + repVoice:condition:rc_dur +
+#                     (1 | workerid) + (1 + repVoice * condition | code),
+#                  control = lmerControl(optimizer="bobyqa", optCtrl = list(maxfun = 800000)),
+#                  data = df.c2_rt)
+#
+# # Remove repVoice:condition | code, variance = 0.0002315
+# m.c2_rt_3 <- lmer(logRT ~ repVoice * condition * rc_lag + rc_order + rc_dur + repVoice:rc_order + condition:rc_order + repVoice:condition:rc_order + repVoice:rc_dur + condition:rc_dur + repVoice:condition:rc_dur +
+#                     (1 | workerid) + (1 + repVoice + condition | code),
+#                  control = lmerControl(optimizer="bobyqa", optCtrl = list(maxfun = 800000)),
+#                  data = df.c2_rt)
+# Remove repVoice | code, variance = 0.0004484
+m.c2_rt_4 <- lmer(logRT ~ repVoice * condition * rc_lag + rc_order + rc_dur + repVoice:rc_order + condition:rc_order + repVoice:condition:rc_order + repVoice:rc_dur + condition:rc_dur + repVoice:condition:rc_dur +
+                    (1 | workerid) + (1 + condition | code),
+                 control = lmerControl(optimizer="bobyqa", optCtrl = list(maxfun = 800000)),
+                 data = df.c2_rt)
+summary(m.c2_rt_4)
+emm.rt = emmeans(m.c2_rt_4, specs = pairwise ~ condition:repVoice)
+summary(emm.rt)
+```
+
+False Alarms
+```{r}
+m.c2_fa <- glmer(correct ~ condition * rc_order + (1 | code),
+                 control = glmerControl(optimizer="bobyqa", optCtrl = list(maxfun = 800000)),
+                 family = "binomial",
+                 data = df.c2_new)
+summary(m.c2_fa)
+```

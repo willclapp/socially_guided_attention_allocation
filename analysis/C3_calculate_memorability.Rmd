@@ -1,0 +1,102 @@
+---
+title: "Chapter 3 - Calculate Talker Memorability"
+author: "William Clapp"
+date: "2024-04-14"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+library(tidyverse)
+library(lme4)
+library(lmerTest)
+library(patchwork)
+library(see)
+library(emmeans)
+library(ggdist)
+library(car)
+library(pwr)
+library(cowplot)
+library(tm)
+library(purrr)
+theme_set(theme_bw())
+set.seed(100)
+```
+
+```{r}
+setwd("LOCAL_DIRECTORY")
+df.c3 <- read.csv("Data/C3.csv") 
+```
+
+Calculate memorability
+```{r}
+df.ranks <- data.frame(first_talker = character(),mean_hit = double(), r_hit = double(),
+                       mean_cr = double(), r_cr = double(), mean_rt = double(), r_rt = double(), mem = double())
+
+group_stats <- function(df_in) {
+  df.Hit_rank <- df_in %>%
+    filter(repeated == "TRUE") %>%
+    mutate(rep_cond = paste(condition, repVoice, sep="_")) %>% 
+    group_by(rep_cond, first_talker) %>%
+    summarize(mean_hit = mean(correct)) %>% 
+    pivot_wider(names_from=rep_cond, values_from=mean_hit) %>% 
+    mutate(mean_hit = (Divided_DIFF + Divided_SAME + Full_DIFF + Full_SAME) / 4,
+           r_hit = (mean_hit - min(mean_hit) )/ (max(mean_hit) - min(mean_hit))) %>% 
+    select(-c(Divided_DIFF, Divided_SAME, Full_DIFF, Full_SAME))
+  
+df.CR_rank <- df_in %>% 
+    filter(repeated == "FALSE") %>% 
+    group_by(condition, first_talker) %>% 
+    summarize(mean_cr = mean(correct)) %>% 
+    pivot_wider(names_from = condition, values_from=mean_cr) %>% 
+    mutate(mean_cr = (Divided + Full) / 2,
+           r_cr = (mean_cr - min(mean_cr) )/ (max(mean_cr) - min(mean_cr))) %>%
+    select(-c(Divided, Full))
+  
+  df.RT_rank <- df_in %>%
+    filter(rt_inc == 1) %>% 
+    mutate(rep_cond = paste(condition, repVoice, sep="_")) %>% 
+    group_by(rep_cond, first_talker) %>%
+    summarize(mean_rt = mean(logRT)) %>%
+    pivot_wider(names_from=rep_cond, values_from=mean_rt) %>% 
+    mutate(mean_rt = (Divided_DIFF + Divided_SAME + Full_DIFF + Full_SAME) / 4,
+           r_rt = (mean_rt - min(mean_rt))/ (max(mean_rt) - min(mean_rt)),
+           r_rt = 1-r_rt)  %>% 
+    select(-c(Divided_DIFF, Divided_SAME, Full_DIFF, Full_SAME))
+  
+  df <- left_join(df.Hit_rank, df.CR_rank) %>% left_join(., df.RT_rank) %>%
+    mutate(mem = sqrt((r_hit^2 + r_cr^2 + r_rt^2)/3))
+  return(df)
+}
+
+df.ranks <- rbind(df.ranks, group_stats(df.c3))
+```
+
+Bootstrap these
+```{r warning=FALSE, message=FALSE}
+nboot = 1000
+participants <- unique(df.c3$workerid)
+
+sample_p <- function(wid) {
+  df <- df.c3 %>% filter(workerid == wid)
+  new_df <- rbind(new_df, df)
+  return(new_df)
+}
+
+new_df <- filter(df.c3, FALSE)
+strap <- function(x) {
+  new_s <- sample(participants, size=length(participants), replace = T)
+  new_df <- filter(df.c3, FALSE)
+  dfs <- lapply(new_s, sample_p)
+  sum_df <- do.call(rbind, dfs)
+  ranks <- group_stats(sum_df)
+  print(x/nboot)
+  return(ranks)
+}
+
+all_ranks <- lapply(1:nboot, strap)
+outranks <- do.call(rbind, all_ranks)
+outranks <- outranks %>%
+  group_by(first_talker) %>%
+  summarize(mem_b = mean(mem))
+
+```

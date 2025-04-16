@@ -1,0 +1,399 @@
+---
+title: "Chapter 4"
+author: "William Clapp"
+date: "2024-04-14"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+library(tidyverse)
+library(lme4)
+library(lmerTest)
+library(patchwork)
+library(ggdist)
+library(car)
+library(cowplot)
+
+theme_set(theme_bw())
+```
+
+
+## Variables
+
+#### Dependent Variables
+
+* Hit rate --- How often did a participant correctly recognize sentences from the study block as repeated? Coded with the variable `correct`, where a hit is 1 and a miss is 0. 
+* False alarm rate --- How often did a participant incorrectly identify new sentences as old? Coded with the variable `correct`, where a correct rejections is 1 and a false alarm is 0.
+* D' --- Z-transformed difference between hit rate and false alarm rate, calculated by `repVoice` and `first_talker` for each participant, and recorded in the column `d_stimTalk`. 
+
+#### Independent Variables
+
+* `repeated` --- Labeled `true` if a sentence was heard in the study block and `false` if not. Corresponds to old/new. This was used to split data into subsets for separate analysis of hits/false alarms, and not analyzed directly.
+* `repVoice` --- Labeled `SAME` for sentences that were repeated by the same talker as produced them in the study block, `DIFF` for sentences repeated by a different talker than produced them in the study block, and `NONE` for sentences that were not heard in the study block. This variable is only analyzed with `NONE` cases filtered out, so it's effectively a binary categorical variable, which we sum-coded.
+* `condition` --- Between-subjects attention condition. Labeled `Full` for full attention and `Divided` for divided attention. Sum-coded.
+* `talkerType` --- Corresponds to *talkerType* in the manuscript. Within-subjects, sum-coded variable where talkers were either *persona-cuing* (`specTalk` here) or *research-typical* (`genTalk` here).
+* `stimType` --- Corresponds to *sentenceType* in the manuscript. Within-subjects categorical variable where sentences were either *talker-aligned* (`specStim` here) or *generic* (`genTalk` here).
+* `rc_lag` --- How many trials elapsed between a sentence's first and second presentations? Used mostly as a control, since this variable is less obviously meaningful than it would be in a continuous recognition memory experiment. Rescaled from 0--1 and mean-centered. 
+* `rc_order` --- What was the serial order of the trial? Also thought of as a control; rescaled and mean-centered.
+
+#### Random Variables
+N.b. Final random effects structures were determined by beginning with a sensible structure (i.e. there's a principled reason to believe a random effect would cause variance), and then if the model did not convergence, removing the effect with the lowest variance. Where it was necessary to remove parameters, previous versions of the RE structure are shown but commented out, along with the variance of the removed parameter.
+
+* `workerid` --- Unique anonymous code for each participant.
+* `code` --- Unique code for each stimulus sentence. 
+
+## Preprocessing
+
+Load data for main recognition memory experiment.
+```{r}
+setwd("LOCAL_DIRECTORY")
+df.c4 <- read.csv("Data/C4.csv") 
+```
+
+Separate into subset DFs for analysis.
+```{r message=FALSE}
+df.c4$repVoice = relevel(as.factor(df.c4$repVoice), ref="SAME")
+df.c4$condition = relevel(as.factor(df.c4$condition), ref="Full")
+df.c4$talkerType = relevel(as.factor(df.c4$talkerType), ref="genTalk")
+df.c4$stimType = relevel(as.factor(df.c4$stimType), ref="genStim")
+
+# To get labels to show up correctly on plots
+df.c4 <- df.c4 %>%
+  mutate(rep_cond = as.factor(paste(condition, repVoice, sep="\n")),
+         stimTalk = as.factor(paste(talkerType, stimType))) 
+df.c4$rep_cond <- factor(df.c4$rep_cond, levels = c("Full\nSAME", "Full\nDIFF", "Full\nNONE", "Divided\nSAME", "Divided\nDIFF", "Divided\nNONE"))
+
+# For False Alarms
+df.c4_new <- df.c4 %>% filter(repVoice == "NONE")
+
+# For Hits
+df.c4_old <- df.c4 %>% filter(repeated=='true', repVoice != "NONE")
+
+# For d'
+df.c4_d <- df.c4 %>%
+  filter(repVoice != "NONE") %>% 
+  select(c(workerid, repVoice, rep_cond, d_stimTalk, first_talker, 
+           condition, stimType, talkerType, stimTalk)) %>%
+  distinct()
+
+# For rt
+df.c4_rt <- df.c4 %>%
+  filter(rt_inc==1)
+```
+
+## Visualizations
+
+### Main experiment
+
+Define color schemes
+```{r}
+c_Full_SAME = "#231575"
+c_Full_DIFF = "#7c6be3"
+c_Divided_SAME = "#c70202"
+c_Divided_DIFF = "#fc4e4e"
+rep_cond_c = c(c_Full_SAME, c_Full_DIFF, c_Divided_SAME, c_Divided_DIFF)
+cond_c <- c(c_Full_DIFF, c_Divided_DIFF)
+
+c_rt_gen <- "#A9A9A9"
+c_rt_ta <- "#5BC4E7"
+c_pc_gen <- "#f2c079"
+c_pc_ta <- "#009682"
+stim_talk_c <- c(c_rt_gen, c_rt_ta, c_pc_gen, c_pc_ta)
+talk_c <- c(c_rt_gen, c_pc_gen)
+stim_c <- c(c_rt_gen, c_rt_ta)
+```
+
+Plot hit-rate for attention and repVoice, and then for talker type and sentence type
+```{r warning=FALSE, message=FALSE}
+p1 <- df.c4_old %>% group_by(rep_cond, workerid) %>% summarize(correct = mean(correct)) %>% 
+  ggplot(data = ., mapping = aes(x = rep_cond, y = correct)) +
+    stat_halfeye(side="left", alpha=0.5, adjust = 1.5, width = 0.5, aes(color=rep_cond, fill=rep_cond)) +
+    geom_boxplot(notch=TRUE, outlier.shape=NA, width = 0.2, aes(color=rep_cond)) + 
+    stat_summary(fun.y="mean", size = 0.2, shape = 23, aes(color=rep_cond)) +
+    scale_color_manual(values = rep_cond_c) + scale_fill_manual(values = rep_cond_c) + 
+    theme(legend.position = "none") + 
+    labs(x='Attention / RepVoice', y = 'Proportion Hits')
+
+p2 <- df.c4_old %>% 
+  mutate(stimTalk = ifelse(stimTalk=="genTalk genStim", "Research-Typ.\nGeneric", 
+                           ifelse(stimTalk=="genTalk specStim", "Research-Typ.\nTalker-Aligned", 
+                                  ifelse(stimTalk=="specTalk genStim", "Persona-Cuing\nGeneric", 
+                                         "Persona-Cuing\nTalker-Aligned"))),
+         stimTalk = factor(stimTalk, levels = c("Research-Typ.\nGeneric", "Research-Typ.\nTalker-Aligned",
+                                                "Persona-Cuing\nGeneric", "Persona-Cuing\nTalker-Aligned"))) %>% 
+  group_by(stimTalk, workerid) %>% summarize(correct = mean(correct)) %>% 
+  ggplot(data = ., mapping = aes(x = stimTalk, y = correct)) +
+    stat_halfeye(side="left", alpha=0.5, adjust = 2.5, width = 0.5, aes(color=stimTalk, fill=stimTalk)) +
+    geom_boxplot(notch=TRUE, outlier.shape=NA, width = 0.2, aes(color=stimTalk)) +
+    stat_summary(fun.y="mean", size = 0.2, shape = 23, aes(color=stimTalk)) +
+    scale_color_manual(values = stim_talk_c) + scale_fill_manual(values = stim_talk_c) + 
+    theme(legend.position = "none") + 
+    labs(x='Talker / Sentence Type', y = 'Proportion Hits')
+
+fig3 <- p1+p2
+fig3
+```
+
+
+RT plots
+
+```{r}
+fig4 <- df.c4_rt %>% 
+  group_by(rep_cond) %>% summarise(mean = mean(logRT), sd = sd(logRT), n = n()) %>% 
+  mutate(ci_l = mean - (1.96 * (sd / sqrt(n)))) %>% mutate(ci_h = mean + (1.96 * (sd / sqrt(n)))) %>% 
+  ggplot(data = ., mapping = aes(x = rep_cond, y = mean, group=rep_cond, color=rep_cond)) +
+    geom_point(size = 2, shape = 23, position = position_dodge(width = 0.6), alpha = 0.7, aes(fill = rep_cond)) + 
+    geom_errorbar(width=0.3, position = position_dodge(width = 0.6), aes(ymin=ci_l, ymax=ci_h)) +
+    scale_color_manual(values = rep_cond_c) + scale_fill_manual(values = rep_cond_c) + 
+    labs(x='Talker / Sentence Type', y = "logRT", color="Attention\nRepVoice", fill="Attention\nRepVoice") +
+    theme(legend.position = "none")
+fig4
+```
+
+FA plots
+```{r warning=FALSE, message=FALSE}
+ylim = c(0.21, 0.31)
+
+p3 <- df.c4_new %>% 
+  group_by(condition) %>% summarise(mean = 1 - mean(correct), sd = sd(correct), n = n()) %>% 
+  mutate(ci_l = mean - (1.96 * (sd / sqrt(n)))) %>% mutate(ci_h = mean + (1.96 * (sd / sqrt(n)))) %>% 
+  ggplot(data = ., mapping = aes(x = condition, y = mean, color=condition)) +
+    geom_point(size = 2, shape = 23, position = position_dodge(width = 0.6), aes(fill = condition)) + 
+    geom_errorbar(width=0.2, position = position_dodge(width = 0.6), aes(ymin=ci_l, ymax=ci_h)) +
+    scale_color_manual(values = cond_c) + scale_fill_manual(values = cond_c) + theme(legend.position = "none") + 
+    coord_cartesian(ylim=ylim) +
+    labs(x='Attention Condition', y = 'Proportion FAs')
+
+p4 <- df.c4_new %>% 
+  mutate(stimType = ifelse(stimType=='specStim', 'Talker-Aligned', 'Generic'),
+         stimType = factor(stimType, levels = c('Generic', 'Talker-Aligned'))) %>% 
+  group_by(stimType) %>% summarise(mean = 1 - mean(correct), sd = sd(correct), n = n()) %>% 
+  mutate(ci_l = mean - (1.96 * (sd / sqrt(n)))) %>% mutate(ci_h = mean + (1.96 * (sd / sqrt(n)))) %>% 
+  ggplot(data = ., mapping = aes(x = stimType, y = mean, color=stimType)) +
+    geom_point(size = 2, shape = 23, position = position_dodge(width = 0.6), aes(fill = stimType)) + 
+    geom_errorbar(width=0.2, position = position_dodge(width = 0.6), aes(ymin=ci_l, ymax=ci_h)) +
+    scale_color_manual(values = stim_c) + scale_fill_manual(values = stim_c) + theme(legend.position = "none") + 
+    coord_cartesian(ylim=ylim) +
+    labs(x='Sentence Type at Study', y = 'Proportion FAs')
+
+p5 <- df.c4_new %>% 
+  mutate(talkerType = ifelse(talkerType=='specTalk', 'Persona-Cuing', 'Research-Typ.'),
+         talkerType = factor(talkerType, levels = c('Research-Typ.', 'Persona-Cuing'))) %>% 
+  group_by(talkerType) %>% summarise(mean = 1 - mean(correct), sd = sd(correct), n = n()) %>% 
+  mutate(ci_l = mean - (1.96 * (sd / sqrt(n)))) %>% mutate(ci_h = mean + (1.96 * (sd / sqrt(n)))) %>% 
+  ggplot(data = ., mapping = aes(x = talkerType, y = mean, color=talkerType)) +
+    geom_point(size = 2, shape = 23, position = position_dodge(width = 0.6), aes(fill = talkerType)) + 
+    geom_errorbar(width=0.2, position = position_dodge(width = 0.6), aes(ymin=ci_l, ymax=ci_h)) +
+    scale_color_manual(values = talk_c) + scale_fill_manual(values = talk_c) + theme(legend.position = "none") + 
+    coord_cartesian(ylim=ylim) +
+    labs(x='Talker Type', y = 'Proportion FAs')
+
+fig5 <- p3+p4+p5
+fig5
+```
+
+
+
+
+```{r warning=FALSE, message=FALSE}
+fig6 <- df.c4_old %>% 
+  mutate(stimTalk = ifelse(stimTalk=="genTalk genStim", "\nResearch-Typical\nGeneric\n", 
+                           ifelse(stimTalk=="genTalk specStim", "Research-Typical\nTalker-Aligned", 
+                                  ifelse(stimTalk=="specTalk genStim", "\nPersona-Cuing\nGeneric\n", 
+                                         "Persona-Cuing\nTalker-Aligned"))),
+         stimTalk = factor(stimTalk, levels = c("\nResearch-Typical\nGeneric\n", "Research-Typical\nTalker-Aligned",
+                                                "\nPersona-Cuing\nGeneric\n", "Persona-Cuing\nTalker-Aligned"))) %>%
+  group_by(stimTalk, condition) %>% summarise(mean = mean(correct), sd = sd(correct), n = n()) %>% 
+  mutate(ci_l = mean - (1.96 * (sd / sqrt(n)))) %>% mutate(ci_h = mean + (1.96 * (sd / sqrt(n)))) %>% 
+  ggplot(data = ., mapping = aes(x = condition, y = mean, group=stimTalk, color=stimTalk)) +
+    geom_point(size = 2, shape = 23, position = position_dodge(width = 0.6), alpha = 0.7, aes(fill = stimTalk)) + 
+    geom_line(position = position_dodge(width = 0.6), size = 0.8, alpha = 0.6) +
+    geom_errorbar(width=0.3, position = position_dodge(width = 0.6), aes(ymin=ci_l, ymax=ci_h)) +
+    scale_color_manual(values = stim_talk_c, guide = guide_legend(reverse = TRUE)) +
+    scale_fill_manual(values = stim_talk_c, guide = guide_legend(reverse = TRUE)) +
+    ggplot2::annotate("segment", x = 0.55, xend = 1.45, y = 0.485, yend = 0.485, colour = c_Full_DIFF, size=2, alpha=0.6) +
+    ggplot2::annotate("segment", x = 1.55, xend = 2.45, y = 0.485, yend = 0.485, colour = c_Divided_DIFF, size=2, alpha=0.6) +
+    labs(x='Attention / RepVoice', y = 'Proportion Hits', color="Talker Type,\nSentence Type", fill="Talker Type,\nSentence Type") 
+fig6
+```
+
+```{r warning=FALSE, message=FALSE}
+fig7 <- df.c4_old %>% 
+  mutate(stimTalk = ifelse(stimTalk=="genTalk genStim", "\nResearch-Typical\nGeneric\n", 
+                           ifelse(stimTalk=="genTalk specStim", "Research-Typical\nTalker-Aligned", 
+                                  ifelse(stimTalk=="specTalk genStim", "\nPersona-Cuing\nGeneric\n", 
+                                         "Persona-Cuing\nTalker-Aligned"))),
+         stimTalk = factor(stimTalk, levels = c("\nResearch-Typical\nGeneric\n", "Research-Typical\nTalker-Aligned",
+                                                "\nPersona-Cuing\nGeneric\n", "Persona-Cuing\nTalker-Aligned"))) %>%
+  group_by(stimTalk, rep_cond) %>% summarise(mean = mean(correct), sd = sd(correct), n = n()) %>% 
+  mutate(ci_l = mean - (1.96 * (sd / sqrt(n)))) %>% mutate(ci_h = mean + (1.96 * (sd / sqrt(n)))) %>% 
+  ggplot(data = ., mapping = aes(x = rep_cond, y = mean, group=stimTalk, color=stimTalk)) +
+    geom_point(size = 2, shape = 23, position = position_dodge(width = 0.6), alpha = 0.7, aes(fill = stimTalk)) + 
+    geom_line(position = position_dodge(width = 0.6), size = 0.8, alpha = 0.6) +
+    geom_errorbar(width=0.3, position = position_dodge(width = 0.6), aes(ymin=ci_l, ymax=ci_h)) +
+    scale_color_manual(values = stim_talk_c, guide = guide_legend(reverse = TRUE)) +
+    scale_fill_manual(values = stim_talk_c, guide = guide_legend(reverse = TRUE)) +
+    ggplot2::annotate("segment", x = 0.55, xend = 1.45, y = 0.485, yend = 0.485, colour = c_Full_SAME, size=2, alpha=0.6) +
+    ggplot2::annotate("segment", x = 1.55, xend = 2.45, y = 0.485, yend = 0.485, colour = c_Full_DIFF, size=2, alpha=0.6) +
+    ggplot2::annotate("segment", x = 2.55, xend = 3.45, y = 0.485, yend = 0.485, colour = c_Divided_SAME, size=2, alpha=0.6) +
+    ggplot2::annotate("segment", x = 3.55, xend = 4.45, y = 0.485, yend = 0.485, colour = c_Divided_DIFF, size=2, alpha=0.6) +
+    labs(x='Attention / RepVoice', y = 'Proportion Hits', color="Talker Type,\nSentence Type", fill="Talker Type,\nSentence Type") 
+fig7
+```
+
+
+
+### Norming experiment
+
+Load multiple-choice data, and visualize.
+```{r warning=FALSE, message=FALSE}
+df.setting <- read.csv("Data/C4_setting_counts.csv") %>% 
+  filter(talker %in% c('T03','T04','T05','T09')) %>% 
+  select(c('talker', 'Jazz.club', 'Manhattan.sidewalk','Farm','Retirement.home')) %>% 
+  pivot_longer(cols=c('Jazz.club', 'Manhattan.sidewalk','Farm','Retirement.home'), names_to = "setting") %>% 
+  mutate(setting = ifelse(setting=='Jazz.club', 'Jazz Club', 
+                          ifelse(setting=='Manhattan.sidewalk', 'Manhattan\nSidewalk', 
+                                 ifelse(setting=='Retirement.home', 'Retirement\nHome', 'Farm')))) %>% 
+  mutate(setting=factor(setting, levels = c('Retirement\nHome', 'Jazz Club', 'Farm', 'Manhattan\nSidewalk')))
+         
+df.expertise <- read.csv("Data/C4_expertise_counts.csv") %>% 
+  filter(talker %in% c('T03','T04','T05','T09'))  %>% 
+  select(c('talker', 'Jazz','NYC.restaurants','Southern.cooking','Knitting')) %>%
+  pivot_longer(cols=c('Jazz','NYC.restaurants','Southern.cooking','Knitting'), names_to = "expertise") %>%
+  mutate(expertise = ifelse(expertise=='Jazz', 'Jazz',
+                          ifelse(expertise=='NYC.restaurants', 'NYC\nRestaurants',
+                                 ifelse(expertise=='Southern.cooking', 'Southern\nCooking', 'Knitting')))) %>%
+  mutate(expertise=factor(expertise, levels = c('Knitting', 'Jazz', 'Southern\nCooking', 'NYC\nRestaurants')))
+
+c_ret = "#317d82"
+c_jaz = "#992e04"
+c_bbq = "#e7cd91"
+c_nyc = "#9bb8a6"
+c_vec = c(c_ret, c_jaz, c_bbq, c_nyc)
+
+s <- ggplot(data=df.setting, mapping=aes(x=talker, y=value)) +
+  geom_col(aes(color = setting, fill = setting), alpha = 0.8, position = position_dodge2(width = 0.9, preserve = "single", padding = 0), width=0.8) +
+  scale_color_manual(values=c_vec) +
+  scale_fill_manual(values=c_vec) +
+  coord_cartesian(ylim = c(0,1)) +
+  labs(y="Proportion selected", x = "Talker", color="Setting", fill="Setting", title="Setting")
+
+e <- ggplot(data=df.expertise, mapping=aes(x=talker, y=value)) +
+  geom_col(aes(color = expertise, fill = expertise), alpha = 0.8, position = position_dodge2(width = 0.9, preserve = "single", padding = 0), width=0.8) +
+  scale_color_manual(values=c_vec) +
+  scale_fill_manual(values=c_vec) +
+  coord_cartesian(ylim = c(0,1)) +
+  labs(y="Proportion selected", x = "Talker", color="Expertise", fill="Expertise", title="Expertise")
+
+leg1 <- get_legend(s)
+leg2 <- get_legend(e)
+s <- s + theme(legend.position = "none")
+e <- e + theme(legend.position = "none")
+legends_stacked <- plot_grid(leg1, leg2, ncol = 1)
+fig2 <- (s | e | legends_stacked) +
+  plot_layout(ncol = 3, widths = c(2, 2, 1))
+fig2
+```
+
+
+
+## Statistics
+
+Set contrasts
+```{r}
+df.c4$repVoice <- droplevels(df.c4$repVoice)
+df.c4_old$repVoice <- droplevels(df.c4_old$repVoice)
+df.c4_d$repVoice <- droplevels(df.c4_d$repVoice)
+df.c4_rt$repVoice <- droplevels(df.c4_rt$repVoice)
+
+contrasts(df.c4_old$repVoice) <- contr.Sum(levels(df.c4_old$repVoice))
+contrasts(df.c4_old$condition) <- contr.Sum(levels(df.c4_old$condition))
+contrasts(df.c4_old$talkerType) <- contr.Sum(levels(df.c4_old$talkerType))
+contrasts(df.c4_old$stimType) <- contr.Sum(levels(df.c4_old$stimType))
+
+contrasts(df.c4_d$repVoice) <- contr.Sum(levels(df.c4_d$repVoice))
+contrasts(df.c4_d$condition) <- contr.Sum(levels(df.c4_d$condition))
+contrasts(df.c4_d$talkerType) <- contr.Sum(levels(df.c4_d$talkerType))
+contrasts(df.c4_d$stimType) <- contr.Sum(levels(df.c4_d$stimType))
+
+contrasts(df.c4_new$condition) <- contr.Sum(levels(df.c4_new$condition))
+contrasts(df.c4_new$talkerType) <- contr.Sum(levels(df.c4_new$talkerType))
+contrasts(df.c4_new$stimType) <- contr.Sum(levels(df.c4_new$stimType))
+
+contrasts(df.c4_rt$repVoice) <- contr.Sum(levels(df.c4_rt$repVoice))
+contrasts(df.c4_rt$condition) <- contr.Sum(levels(df.c4_rt$condition))
+contrasts(df.c4_rt$talkerType) <- contr.Sum(levels(df.c4_rt$talkerType))
+contrasts(df.c4_rt$stimType) <- contr.Sum(levels(df.c4_rt$stimType))
+```
+
+D'
+```{r}
+# Max reasonable
+# mm.d <- lmer(d_stimTalk ~ repVoice * condition * stimType * talkerType + (1 + repVoice + stimType + talkerType | workerid),
+#                 control = lmerControl(optimizer="bobyqa", optCtrl = list(maxfun = 800000)),
+#                 data = df.c4_d)
+
+# Singular; remove RepVoice, variance = 0.0002574
+mm.d <- lmer(d_stimTalk ~ repVoice * condition * stimType * talkerType + (1 + stimType + talkerType | workerid),
+                control = lmerControl(optimizer="bobyqa", optCtrl = list(maxfun = 800000)),
+                data = df.c4_d)
+summary(mm.d)
+```
+
+Hits
+```{r}
+# Max reasonable
+# mm.hit <- glmer(correct ~ repVoice * condition * stimType * talkerType + rc_lag + (1 + repVoice + stimType + talkerType | workerid) + (1 + repVoice + talkerType | code),
+#                     control = glmerControl(optimizer="bobyqa", optCtrl = list(maxfun = 800000)),
+#                     family = "binomial",
+#                     data = df.c4_old)
+
+# Singular; remove talkerType | workerid, variance = 0.0004108
+mm.hit <- glmer(correct ~ repVoice * condition * stimType * talkerType + rc_lag + (1 + repVoice + stimType | workerid) + (1 + repVoice + talkerType | code),
+                    control = glmerControl(optimizer="bobyqa", optCtrl = list(maxfun = 800000)),
+                    family = "binomial",
+                    data = df.c4_old)
+summary(mm.hit)
+```
+
+False Alarms
+```{r}
+# Max reasonable model
+# m.fa <- glmer(correct ~ condition * stimType * talkerType + rc_order + (1 + stimType + talkerType | workerid) + (1 + talkerType | code),
+#                  control = glmerControl(optimizer="bobyqa", optCtrl = list(maxfun = 800000)),
+#                  family = "binomial",
+#                  data = df.c4_new)
+
+# Singular; remove talkerType:code, variance = 0.0006811
+mm.fa <- glmer(1 - correct ~ condition * stimType * talkerType + rc_order + (1 + stimType + talkerType | workerid) + (1 | code),
+                  control = glmerControl(optimizer="bobyqa", optCtrl = list(maxfun = 800000)),
+                  family = "binomial",
+                  data = df.c4_new)
+summary(mm.fa)
+```
+
+RT
+```{r}
+# # Max reasonable
+# mm.rt <- lmer(logRT ~ repVoice * condition * stimType * talkerType + rc_lag + rc_dur + (1 + repVoice + stimType + talkerType | workerid) + (1 + repVoice + talkerType | code),
+#                  control = lmerControl(optimizer="bobyqa", optCtrl = list(maxfun = 800000)),
+#                  data = df.c4_rt)
+
+# # Singular; remove repVoice | workerid, variance = 6.853e-06
+# mm.rt <- lmer(logRT ~ repVoice * condition * stimType * talkerType + rc_lag + rc_dur + (1 + stimType + talkerType | workerid) + (1 + repVoice + talkerType | code),
+#                  control = lmerControl(optimizer="bobyqa", optCtrl = list(maxfun = 800000)),
+#                  data = df.c4_rt)
+
+# # Singular; remove repVoice | code, variance = 0.0007198
+# mm.rt <- lmer(logRT ~ repVoice * condition * stimType * talkerType + rc_lag + rc_dur + (1 + stimType + talkerType | workerid) + (1 + talkerType | code),
+#                  control = lmerControl(optimizer="bobyqa", optCtrl = list(maxfun = 800000)),
+#                  data = df.c4_rt)
+
+# Singular; remove stimtype | workerid, variance = 9.862e-05
+mm.rt <- lmer(logRT ~ repVoice * condition * stimType * talkerType + rc_lag + rc_dur + (1 + talkerType | workerid) + (1 + talkerType | code),
+                 control = lmerControl(optimizer="bobyqa", optCtrl = list(maxfun = 800000)),
+                 data = df.c4_rt)
+summary(mm.rt)
+
+```
+

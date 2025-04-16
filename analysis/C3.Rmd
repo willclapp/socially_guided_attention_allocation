@@ -1,0 +1,622 @@
+---
+title: "Chapter 3"
+author: "William Clapp"
+date: "2024-04-14"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+library(tidyverse)
+library(lme4)
+library(lmerTest)
+library(patchwork)
+library(see)
+library(emmeans)
+library(ggdist)
+library(car)
+library(pwr)
+library(cowplot)
+library(tm)
+library(purrr)
+theme_set(theme_bw())
+set.seed(100)
+```
+
+## Variables
+#### Dependent Variables
+
+* Hit rate --- How often did a participant correctly recognize sentences from the study block as repeated? Coded with the variable `correct`, where a hit is 1 and a miss is 0. 
+* False alarm rate --- How often did a participant incorrectly identify new sentences as old? Coded with the variable `correct`, where a correct rejections is 1 and a false alarm is 0.
+* Accuracy --- Only used on Exp. 3, where both the correct and incorrect options were presented on each trial. How often did a participant select the correct image? Coded with the variable `correct`, where a correct choice is labeled 1 and incorrect is labeled 0.
+* D' --- Z-transformed difference between hit rate and false alarm rate, calculated within `repVoice` for each participant, and coded as `d_repVoice`. 
+* logRT --- Natural log of reaction time, measured in ms from the stimulus offset. Only analyzed on hits.
+
+#### Independent Variables
+
+* `repeated` --- Labeled `TRUE` if a sentence was heard in the study block and `FALSE` if not. Corresponds to old/new. This was used to split data into subsets for separate analysis of hits/false alarms, and not analyzed directly.
+* `repVoice` --- Labeled `SAME` for sentences that were repeated by the same talker as produced them in the study block, `DIFF` for sentences repeated by a different talker than produced them in the study block, and `NONE` for sentences that were not heard in the study block. This variable is only really analyzed with `NONE` cases filtered out, so it's effectively a binary categorical variable, which we sum-coded.
+* `condition` --- Between-subjects attention condition. Labeled `Full` for full attention and `Divided` for divided attention. Sum-coded.
+* `mem_b` --- Bootstrapped memorability. Composite memorability score, calculated based on hit-rate, correct-rejection-rate, and inverted RT, all rescaled 0-1.
+* `rc_lag` --- How many trials elapsed between a sentence's first and second presentations? Used mostly as a control, since this variable is less obviously meaningful than it would be in a continuous recognition memory experiment. Rescaled from 0--1 and mean-centered. 
+* `rc_order` --- What was the serial order of the trial? Also thought of as a control; rescaled and mean-centered.
+* `rc_duration` --- How long was the stimulus in ms? Used as a control for RT analysis in Exp. 1; rescaled and mean-centered.
+
+#### Random Variables
+N.b. Final random effects structures were determined by beginning with a sensible structure (i.e. there's a principled reason to believe a random effect would cause variance), and then if the model did not convergence, removing the effect with the lowest variance. Where it was necessary to remove parameters, previous versions of the RE structure are shown but commented out, along with the variance of the removed parameter.
+
+* `workerid` --- Unique anonymous code for each participant.
+* `code` --- Unique code for each stimulus sentence. 
+
+# Main experiment analysis
+```{r}
+
+setwd("LOCAL_DIRECTORY")
+# Get bootstrapped scores
+df.c3_mem <- read.csv("Data/C3_mem.csv") 
+# Join with experiment data
+df.c3 <- read.csv("Data/C3.csv") %>% left_join(., df.c3_mem) 
+```
+
+
+```{r message=FALSE}
+df.c3$repVoice = relevel(as.factor(df.c3$repVoice), ref="SAME")
+df.c3$condition = relevel(as.factor(df.c3$condition), ref="Full")
+
+# For False Alarms
+df.c3_new <- df.c3 %>% filter(repVoice == "NONE")
+# To get labels to show up correctly on plots
+df.c3 <- df.c3 %>%
+  mutate(rep_cond = as.factor(paste(condition, repVoice, sep="\n")),
+         rc_lag = as.numeric(rc_lag)) %>%
+  filter(repVoice != "NONE")
+df.c3$rep_cond <- factor(df.c3$rep_cond, levels = c("Full\nSAME", "Full\nDIFF", "Full\nNONE", "Divided\nSAME", "Divided\nDIFF", "Divided\nNONE"))
+# For Hits
+df.c3_old <- df.c3 %>%
+  filter(repeated=='TRUE', repVoice != "NONE")
+# For d'
+df.c3_d <- df.c3 %>%
+  select(c(workerid, condition, repVoice, rep_cond, d_repVoice)) %>%
+  distinct()
+df.c3_d_talker <- df.c3 %>%
+  select(c(workerid, condition, repVoice, rep_cond, d_repVoice_talker, first_talker, mem_b)) %>%
+  distinct()
+# For rt
+df.c3_rt <- df.c3 %>%
+  filter(rt_inc==1)
+
+```
+
+
+## Plots
+
+Halfeye plots for Hits, D', and false alarms
+```{r}
+halfeye <- function(x_var, y_var, df, c_vec, ylim, title, ylab, xlab, adj, wid, sub_n, dir) {
+  p1 <- df %>%
+    group_by(workerid, .data[[x_var]]) %>%
+    summarise(var = sub_n + dir * mean(.data[[y_var]])) %>%
+    ggplot(mapping = aes(x = .data[[x_var]], y = var)) +
+      stat_halfeye(side="left", alpha=0.5, adjust = 0.75, width = 0.5, aes(color=.data[[x_var]], fill=.data[[x_var]])) +
+      geom_boxplot(notch=TRUE, outlier.shape=NA, width = wid, aes(color=.data[[x_var]])) +
+      scale_color_manual(values = c_vec) +
+      scale_fill_manual(values = c_vec) +
+      stat_summary(fun.y="mean", size = 0.2, shape = 5, aes(color=.data[[x_var]])) +
+      theme(legend.position = "none") +
+      coord_cartesian(ylim=ylim) +
+      labs(title=title, y=ylab, x=xlab)
+  p1
+}
+```
+
+Plots for RT
+```{r}
+rt <- function(x_var, df, c_vec, title, ylab, xlab) {
+  p_rt <- df %>% 
+    group_by(.data[[x_var]]) %>% 
+    summarise(mean = mean(logRT), sd = sd(logRT), n = n()) %>% 
+    mutate(ci_l = mean - (1.96 * (sd / sqrt(n)))) %>% 
+    mutate(ci_h = mean + (1.96 * (sd / sqrt(n)))) %>% 
+    ggplot(mapping = aes(x = .data[[x_var]], y = mean)) +
+      geom_errorbar(aes(ymin=ci_l, ymax=ci_h, color = .data[[x_var]]), width=.1) +
+      geom_point(aes(color = .data[[x_var]]), size=2) +
+      theme(legend.position = "none") +
+      scale_color_manual(values = c_vec) +
+      labs(title=title, y=ylab, x=xlab)
+  p_rt
+}
+```
+
+
+```{r warning=FALSE, message=FALSE}
+c_Full_SAME = "#231575"
+c_Full_DIFF = "#7c6be3"
+c_Divided_SAME = "#c70202"
+c_Divided_DIFF = "#fc4e4e"
+c_vec = c(c_Full_SAME, c_Full_DIFF, c_Divided_SAME, c_Divided_DIFF)
+c_vec2 = c(c_Full_DIFF, c_Divided_DIFF)
+
+p_hit <- halfeye("rep_cond", "correct", df.c3_old, c_vec, c(0,1), "Hits", "Proportion Hits", "Condition; RepVoice", 0.05, 0.2, 0, 1)
+p_fa <- halfeye("condition", "correct", df.c3_new, c(c_Full_DIFF, c_Divided_DIFF), c(0,1), "False Alarms", "Proportion False Alarms", "Condition", 0.1, 0.2, 1, -1)
+p_d <- halfeye("rep_cond", "d_repVoice", df.c3, c_vec, c(-.5,3.25), "D'", "D'", "Condition; RepVoice", 0.05, 0.2, 0, 1)
+p_rt <- rt("rep_cond", df.c3_rt, c_vec, "Latency", "logRT", "Condition; RepVoice")
+
+c3 <- p_hit| p_fa | p_d  | p_rt
+
+dmem <- ggplot(data = df.c3_d_talker,
+       mapping = aes(x=mem_b, y=d_repVoice_talker)) +
+  geom_smooth(aes(color = rep_cond, fill = rep_cond), alpha = 0.15, method = "lm") +
+  coord_cartesian(ylim=c(0.3,1.6)) +
+  scale_fill_manual(values=c_vec) +
+  scale_color_manual(values=c_vec) + 
+  labs(x = "Memorability", y = "D'") + 
+  theme(legend.position = "NONE")
+
+hmem <- ggplot(data = df.c3_old,
+       mapping = aes(x=mem_b, y=correct)) +
+  geom_smooth(aes(color = rep_cond, fill = rep_cond), alpha = 0.15, method = "glm", method.args = list(family = "binomial")) +
+  scale_fill_manual(values=c_vec) +
+  scale_color_manual(values=c_vec) + 
+  labs(color = "Condition;\nRepVoice", fill = "Condition;\nRepVoice", x = "Memorability", y = "Proportion Hits")  + 
+  theme(legend.position = "NONE")
+
+rtmem <- ggplot(data = df.c3_rt,
+       mapping = aes(x=mem_b, y=logRT)) +
+  geom_smooth(aes(color = rep_cond, fill = rep_cond), alpha = 0.15, method = "lm") +
+  scale_fill_manual(values=c_vec) +
+  scale_color_manual(values=c_vec) +
+  coord_cartesian(ylim=c(5.9, 6.3)) + 
+  labs(x = "Memorability", y = "logRT") + 
+  theme(legend.position = "NONE")
+
+crmem <- ggplot(data = df.c3_new,
+       mapping = aes(x=mem_b, y=1-correct)) +
+  geom_smooth(aes(color = condition, fill = condition), alpha = 0.15, method = "glm", method.args = list(family = "binomial")) +
+  scale_fill_manual(values=c_vec2) +
+  scale_color_manual(values=c_vec2) + 
+  labs(x = "Memorability", y = "Proportion FAs", color = "Condition", fill = "Condition") + 
+  theme(legend.position = "NONE")
+
+mem = hmem | crmem | dmem | rtmem  + plot_annotation(title = 'Exp. 1: Bootstrapped Memorability')
+mem
+
+c3_all <- c3 / mem
+c3_all
+```
+
+
+
+## Statistics
+
+Set contrasts
+```{r}
+df.c3$repVoice <- droplevels(df.c3$repVoice)
+df.c3_old$repVoice <- droplevels(df.c3_old$repVoice)
+df.c3_d_talker$repVoice <- droplevels(df.c3_d_talker$repVoice)
+df.c3_rt$repVoice <- droplevels(df.c3_rt$repVoice)
+
+contrasts(df.c3_d_talker$repVoice) <- contr.Sum(levels(df.c3_d_talker$repVoice))
+contrasts(df.c3_d_talker$condition) <- contr.Sum(levels(df.c3_d_talker$condition))
+contrasts(df.c3_old$repVoice) <- contr.Sum(levels(df.c3_old$repVoice))
+contrasts(df.c3_old$condition) <- contr.Sum(levels(df.c3_old$condition))
+contrasts(df.c3_new$condition) <- contr.Sum(levels(df.c3_new$condition))
+contrasts(df.c3_rt$repVoice) <- contr.Sum(levels(df.c3_rt$repVoice))
+contrasts(df.c3_rt$condition) <- contr.Sum(levels(df.c3_rt$condition))
+```
+
+D'
+```{r}
+# SINGULAR
+# m.c3_d <- lmer(d_repVoice_talker ~ repVoice * condition * mem_b + (0 + repVoice + mem_b | workerid),
+#                 data = df.c3_d_talker)
+# Singular; remove repVoice | workerid, variance = 0.4159
+m.c3_d <- lmer(d_repVoice_talker ~ repVoice * condition * mem_b + (0 + mem_b | workerid),
+                data = df.c3_d_talker)
+summary(m.c3_d)
+```
+
+Hits
+```{r}
+# m.c3_hit <- glmer(correct ~ repVoice * condition * mem_b + rc_lag + rc_order + (0 + mem_b | workerid) + (1 | code),
+#                    control = glmerControl(optimizer="bobyqa", optCtrl = list(maxfun = 800000)),
+#                    family = "binomial",
+#                    data = df.c3_old)
+# SINGULAR
+# m.c3_hit <- glmer(correct ~ repVoice * condition * mem_b + rc_lag + rc_order + (0 + mem_b + repVoice | workerid) + (1 | code),
+#                    control = glmerControl(optimizer="bobyqa", optCtrl = list(maxfun = 800000)),
+#                    family = "binomial",
+#                    data = df.c3_old)
+# SINGULAR
+# m.c3_hit <- glmer(correct ~ repVoice * condition * mem_b + rc_lag + rc_order + (0 + mem_b | workerid) + (1 + repVoice + condition | code),
+#                    control = glmerControl(optimizer="bobyqa", optCtrl = list(maxfun = 800000)),
+#                    family = "binomial",
+#                    data = df.c3_old)
+
+m.c3_hit <- glmer(correct ~ repVoice * condition * mem_b + rc_lag + rc_order + (0 + mem_b | workerid) + (1 + condition | code),
+                   control = glmerControl(optimizer="bobyqa", optCtrl = list(maxfun = 800000)),
+                   family = "binomial",
+                   data = df.c3_old)
+summary(m.c3_hit)
+```
+
+RT
+```{r}
+# m.c3_rt <- lmer(logRT ~ repVoice * condition * mem_b + rc_lag + rc_order + rc_dur + (0 + mem_b + repVoice | workerid) + (1 | code),
+#                  control = lmerControl(optimizer="bobyqa", optCtrl = list(maxfun = 800000)),
+#                  data = df.c3_rt)
+m.c3_rt <- lmer(logRT ~ repVoice * condition * mem_b + rc_lag + rc_order + rc_dur + (0 + mem_b | workerid) + (1 + condition | code),
+                 control = lmerControl(optimizer="bobyqa", optCtrl = list(maxfun = 800000)),
+                 data = df.c3_rt)
+summary(m.c3_rt)
+```
+
+False Alarms
+```{r}
+# SINGULAR
+# m.c3_fa <- glmer(correct ~ condition * mem_b + rc_order + (0 + mem_b | workerid) + (1 + condition | code),
+#                  control = glmerControl(optimizer="bobyqa", optCtrl = list(maxfun = 800000)),
+#                  family = "binomial",
+#                  data = df.c3_new)
+m.c3_fa <- glmer(correct ~ condition * mem_b + rc_order + (0 + mem_b | workerid) + (1 | code),
+                 control = glmerControl(optimizer="bobyqa", optCtrl = list(maxfun = 800000)),
+                 family = "binomial",
+                 data = df.c3_new)
+
+summary(m.c3_fa)
+```
+
+
+# Split-half analysis
+
+## Visualization & Analysis
+
+```{r}
+df.corr <- read.csv('Data/C3_split_half.csv')
+c_vec = c("#00A36C", "#999")
+
+# Summary stats
+mean_AB <- mean(df.corr$corr_AB)
+mean_AB_shuf <- mean(df.corr$corr_AB_shuf)
+sb_corr <- (mean_AB * 2) / (mean_AB + 1)
+sb_corr_shuf <- (mean_AB_shuf * 2) / (mean_AB_shuf + 1)
+
+# Plot
+c_plot <- df.corr %>% 
+  pivot_longer(cols = starts_with("corr"), names_to="comp", values_to="correlation") %>% 
+  mutate(comp = ifelse(comp=="corr_AB", "A/B", "A/shuffled B")) %>% 
+  ggplot(data = ., mapping = aes(x=correlation)) +
+  geom_density(aes(color = comp, fill = comp), alpha=0.4, adjust = 1) +
+  geom_vline(xintercept=mean_AB_shuf, color=c_vec[2], linetype='dashed') +
+  geom_vline(xintercept=mean_AB, color=c_vec[1], linetype='dashed') +
+  geom_vline(xintercept=sb_corr_shuf, color=c_vec[2], linetype='dotted') +
+  geom_vline(xintercept=sb_corr, color=c_vec[1], linetype='dotted') +
+  scale_fill_manual(values=c_vec) +
+  scale_color_manual(values=c_vec) +
+  labs(color="Comparison", fill="Comparison", x = "Correlation", y = "Density")
+c_plot
+
+```
+
+```{r}
+corr_long <- df.corr %>%
+  pivot_longer(cols = c(corr_AB, corr_AB_shuf),
+               names_to = "corr_type",
+               values_to = "correlation") %>% 
+  mutate(correlation = (correlation*2)/(correlation+1))
+
+lm_model <- lm(correlation ~ corr_type, data = corr_long)
+summary(lm_model)
+```
+
+
+To generate this data from scratch:
+
+```{r}
+data <- read.csv("Data/C3.csv") %>% 
+  mutate(hit = ifelse(repeated=="TRUE", ifelse(case=="hit", 1, 0), NA),
+         cr = ifelse(repeated=="FALSE", ifelse(case=="correct_rejection", 1, 0), NA),
+         logRT = ifelse(rt_inc==1, logRT, NA))
+```
+
+Get stats by talker
+```{r}
+talker_stats <- data %>%
+  group_by(first_talker, condition, repVoice) %>%
+  summarize(hit_rate = mean(hit, na.rm = TRUE),
+            cr_rate  = mean(cr, na.rm = TRUE),
+            mean_logRT = mean(logRT, na.rm = TRUE),
+            .groups = "drop") %>%
+  group_by(first_talker) %>%
+  summarize(HR = mean(hit_rate, na.rm = TRUE),
+            CR = mean(cr_rate, na.rm = TRUE),
+            RT = mean(mean_logRT, na.rm = TRUE),
+            .groups = "drop") 
+```
+
+
+```{r}
+n_iter <- 1000
+
+# Compute overall scaling parameters from the full dataset.
+overall_stats <- data %>%
+  group_by(first_talker, condition, repVoice) %>% 
+  summarize(hit_rate = mean(hit, na.rm = TRUE),
+            cr_rate  = mean(cr, na.rm = TRUE),
+            mean_logRT = mean(logRT, na.rm = TRUE),
+            .groups = "drop") %>%
+  group_by(first_talker) %>%
+  summarize(HR = mean(hit_rate, na.rm = TRUE),
+            CR = mean(cr_rate, na.rm = TRUE),
+            RT = mean(mean_logRT, na.rm = TRUE),
+            .groups = "drop") %>%
+  summarise(min_HR = min(HR), max_HR = max(HR),
+            min_CR = min(CR), max_CR = max(CR),
+            min_RT = min(RT), max_RT = max(RT))
+
+rescale_and_center <- function(x, global_min, global_max, invert = FALSE) {
+  if (global_max - global_min == 0) {
+    scaled <- rep(0.5, length(x))
+  } else {
+    if (invert) {
+      scaled <- 1 - ((x - global_min) / (global_max - global_min))
+    } else {
+      scaled <- (x - global_min) / (global_max - global_min)
+    }
+  }
+  centered <- scaled - mean(scaled)
+  return(centered)
+}
+
+compute_mem <- function(df, overall_stats) {
+  df %>%
+    group_by(first_talker, condition, repVoice) %>%
+    summarize(hit_rate = mean(hit, na.rm = TRUE),
+              cr_rate  = mean(cr, na.rm = TRUE),
+              mean_logRT = mean(logRT, na.rm = TRUE),
+              .groups = "drop") %>%
+    group_by(first_talker) %>%
+    summarize(HR = mean(hit_rate, na.rm = TRUE),
+              CR = mean(cr_rate, na.rm = TRUE),
+              RT = mean(mean_logRT, na.rm = TRUE),
+             .groups = "drop") %>%
+    mutate(HR_sc  = rescale_and_center(HR, global_min = overall_stats$min_HR, global_max = overall_stats$max_HR, invert = FALSE),
+           CR_sc  = rescale_and_center(CR, global_min = overall_stats$min_CR, global_max = overall_stats$max_CR, invert = FALSE),
+          iRT_sc = rescale_and_center(RT, global_min = overall_stats$min_RT, global_max = overall_stats$max_RT, invert = TRUE)) %>%
+    mutate(mem = sqrt((HR_sc^2 + CR_sc^2 + iRT_sc^2)/3)) %>%
+    select(first_talker, mem)
+}
+```
+
+```{r}
+results_list <- vector("list", n_iter)
+corr_list <- vector("list", n_iter)
+
+for(i in 1:n_iter) {
+  
+  # Create an assignment of participants (workerid) to splits A and B.
+  assignment <- data %>%
+    distinct(workerid) %>%
+    mutate(split = sample(c("A", "B"), size = n(), replace = TRUE))
+  
+  # Join the assignment back onto the full dataset.
+  data_split <- data %>%
+    left_join(assignment, by = "workerid")
+  
+  # Compute memorability for Group A.
+  mem_A <- data_split %>%
+    filter(split == "A") %>%
+    compute_mem(overall_stats) %>%
+    rename(mem_A = mem)
+  
+  # Compute memorability for Group B.
+  mem_B <- data_split %>%
+    filter(split == "B") %>%
+    compute_mem(overall_stats) %>%
+    rename(mem_B = mem)
+  
+  # For Group B shuffled: shuffle the first_talker labels in Group B and recompute.
+  mem_B_shuffled <- data_split %>%
+    filter(split == "B") %>%
+    mutate(first_talker = sample(first_talker, size = n(), replace = FALSE)) %>%
+    compute_mem(overall_stats) %>%
+    rename(mem_B_shuffled = mem)
+  
+  # Merge the three sets by first_talker.
+  combined <- mem_A %>%
+    full_join(mem_B, by = "first_talker") %>%
+    full_join(mem_B_shuffled, by = "first_talker") %>%
+    mutate(iteration = i)
+  
+  # Compute overall correlations
+  complete_AB <- complete.cases(combined$mem_A, combined$mem_B)
+  if(sum(complete_AB) < 2) {
+    corr_AB <- NA
+  } else {
+    corr_AB <- cor(combined$mem_A[complete_AB], combined$mem_B[complete_AB])
+  }
+  
+  complete_AB_shuf <- complete.cases(combined$mem_A, combined$mem_B_shuffled)
+  if(sum(complete_AB_shuf) < 2) {
+    corr_AB_shuf <- NA
+  } else {
+    corr_AB_shuf <- cor(combined$mem_A[complete_AB_shuf], combined$mem_B_shuffled[complete_AB_shuf])
+  }
+  
+  corr_list[[i]] <- tibble(iteration = i, corr_AB = corr_AB, corr_AB_shuf = corr_AB_shuf)
+}
+
+df.corr <- bind_rows(corr_list)
+```
+
+
+
+
+
+# Phonetic distances
+
+Load data
+
+```{r}
+# Join with experiment data
+df.c3 <- read.csv("Data/C3.csv") 
+# Phonetic distances
+df.dist <- read.csv("Data/C3_distances.csv")
+```
+
+```{r message=FALSE}
+df.c3$repVoice = relevel(as.factor(df.c3$repVoice), ref="SAME")
+df.c3$condition = relevel(as.factor(df.c3$condition), ref="Full")
+rep_cond_levels <- c("Full\nSAME", "Full\nDIFF", "Full\nNONE", "Divided\nSAME", "Divided\nDIFF", "Divided\nNONE")
+
+df.dist <- df.dist %>% 
+  mutate(dist_code = paste(file1, substr(file2, nchar(file2)-3, nchar(file2)), sep=""),
+         rc_dist = (distance-mean(distance))/(max(distance)-min(distance)),
+         z_dist = scale(distance)) %>% 
+  select(c(dist_code, distance, rc_dist, z_dist, distance))
+
+dist_mean <- mean(df.dist$distance)
+dist_min <- min(df.dist$distance)
+dist_max <- max(df.dist$distance)
+dist_sd <- sd(df.dist$distance)
+
+df.c3_diff <- df.c3 %>%
+  mutate(rep_cond = as.factor(paste(condition, repVoice, sep="\n")),
+         rc_lag = as.numeric(rc_lag)) %>%
+  filter(repVoice == "DIFF") %>% 
+  mutate(dist_code = ifelse(as.numeric(substr(talker, nchar(talker)-1, nchar(talker))) < 
+                              as.numeric(substr(first_talker, nchar(first_talker)-1, nchar(first_talker))),
+                            paste(code, talker, first_talker, sep="_"),
+                            paste(code, first_talker, talker, sep="_"))) %>% 
+  left_join(., df.dist)
+
+df.c3_diffrt <- df.c3_diff %>% 
+  filter(rt_inc == 1)
+
+df.c3_diff$rep_cond <- factor(df.c3_diff$rep_cond, levels = rep_cond_levels)
+df.c3_diffrt$rep_cond <- factor(df.c3_diffrt$rep_cond, levels = rep_cond_levels)
+```
+
+
+## Visualizations
+
+```{r}
+color <- "#00A36C"
+a <- ggplot(data=df.c3_diff, mapping=aes(x=rc_dist)) +
+  geom_density(color = color, fill = color, alpha = 0.4) +
+  labs(x="Phonetic distance", y = "Density", title="Distance Distribution")
+
+b <- ggplot(data=df.c3_diff, mapping=aes(x=rc_dist, y=correct)) +
+  geom_smooth(method = "lm", alpha=0.15, color = color, fill = color) +
+  theme(legend.position = "none") +
+  labs(x="Phonetic distance", y = "Proportion correct", title="DIFF Hits")
+
+c <- ggplot(data=df.c3_diffrt, mapping=aes(x=rc_dist, y=logRT)) +
+  geom_smooth(method = "lm", alpha=0.15, color = color, fill = color) +
+  labs(x="Phonetic distance", y = "logRT", title="DIFF logRT")
+```
+
+Multi-dimensional scaling
+```{r}
+df.mds <- df.dist %>% 
+  mutate(talkers = substr(dist_code, nchar(dist_code)-6, nchar(dist_code)),
+         distance = (distance - min(distance)) / (max(distance - min(distance)))) %>% 
+  separate(talkers, c('T1', 'T2'), sep="_") %>% 
+  group_by(T1, T2) %>% 
+  summarize(mean_dist=mean(distance))
+
+df.sym <- df.mds %>%
+  rename(talker1 = T1, talker2 = T2, dist = mean_dist) %>%
+  bind_rows(df.mds %>% rename(talker1 = T2, talker2 = T1, dist = mean_dist))
+
+mat_df <- df.sym %>%
+  pivot_wider(names_from = talker2, values_from = dist)
+
+mat <- as.matrix(mat_df[,-1])
+rownames(mat) <- mat_df$talker1
+new_order_names <- paste0("T", sprintf("%02d", 1:12))
+mat <- mat[new_order_names, new_order_names]
+diag(mat) <- 0
+
+mds_result <- cmdscale(as.dist(mat), k = 2)
+```
+
+```{r}
+df.vs <- df.c3 %>% 
+  select(first_talker) %>% 
+  distinct() %>% 
+  arrange(first_talker)
+df.vs$V1 <- mds_result[, 1]
+df.vs$V2 <- mds_result[, 2]
+df.vs <- df.vs %>% 
+  mutate(V1 = V1 - mean(V1),
+         V2 = V2 - mean(V2))
+
+lowc <- "#40f5b8"
+
+psim <- ggplot(data=df.vs, mapping = aes(V1, V2)) +
+  geom_point(shape = 21, size = 5, fill = lowc, color = color) +
+  coord_cartesian(ylim=c(-0.32,0.2), xlim=c(-0.37, 0.25)) +
+  labs(fill="Memorability", x="Dimension 1", y="Dimension 2", title = "Perceptual Similarity") +
+  scale_x_continuous(breaks = c()) +
+  scale_y_continuous(breaks = c()) +
+  geom_text(aes(label = first_talker), vjust = 0.5, hjust = 0.5, color = "black", size = 2)
+
+
+all <- (a + psim) / (b+c )
+all
+```
+
+## Stats
+Set contrasts
+```{r}
+contrasts(df.c3_diff$condition) <- contr.Sum(levels(df.c3_diff$condition))
+contrasts(df.c3_diffrt$condition) <- contr.Sum(levels(df.c3_diffrt$condition))
+```
+
+```{r}
+# m.hit <- glmer(correct ~ rc_dist * condition + rc_lag + rc_order + (1 + rc_dist | workerid) + (1 + rc_dist + condition | code),
+#                control = glmerControl(optimizer="bobyqa", optCtrl = list(maxfun = 800000)),
+#                family="binomial", data = df.c3_diff)
+# Remove distance | subject, variance = 0.0007776
+# m.hit <- glmer(correct ~ rc_dist * condition + rc_lag + rc_order + (1 | workerid) + (1 + rc_dist + condition | code),
+#                control = glmerControl(optimizer="bobyqa", optCtrl = list(maxfun = 800000)),
+#                family="binomial", data = df.c3_diff)
+# Remove condition | item, variance = 0.001339
+m.hit <- glmer(correct ~ rc_dist * condition + rc_lag + rc_order + (1 | workerid) + (1 + rc_dist | code),
+               control = glmerControl(optimizer="bobyqa", optCtrl = list(maxfun = 800000)),
+               family="binomial", data = df.c3_diff)
+summary(m.hit)
+
+# m.rt <- lmer(logRT ~ rc_dist * condition + rc_order + rc_lag + rc_dur + (1 + rc_dist | workerid) + (1 + rc_dist + condition | code),
+#              control = lmerControl(optimizer="bobyqa", optCtrl = list(maxfun = 800000)),
+#              data = df.c3_diffrt)
+# Remove distance | workerid, variance = 4.839e-07
+# m.rt <- lmer(logRT ~ rc_dist * condition + rc_order + rc_lag + rc_dur + (1 | workerid) + (1 + rc_dist + condition | code),
+#              control = lmerControl(optimizer="bobyqa", optCtrl = list(maxfun = 800000)),
+#              data = df.c3_diffrt)
+# Remove condition | item, variance = 0.0001714
+# m.rt <- lmer(logRT ~ rc_dist * condition + rc_order + rc_lag + rc_dur + (1 | workerid) + (1 + rc_dist | code),
+#              control = lmerControl(optimizer="bobyqa", optCtrl = list(maxfun = 800000)),
+#              data = df.c3_diffrt)
+# Remove 1 | code, variance = 0.01108
+m.rt <- lmer(logRT ~ rc_dist * condition + rc_order + rc_lag + rc_dur + (1 | workerid) + (0 + rc_dist | code),
+             control = lmerControl(optimizer="bobyqa", optCtrl = list(maxfun = 800000)),
+             data = df.c3_diffrt)
+summary(m.rt)
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
