@@ -1,0 +1,46 @@
+Generalized linear mixed model fit by maximum likelihood (Laplace Approximation) ['glmerMod']
+ Family: binomial  ( logit )
+Formula: correct ~ repVoice * condition * mem_b + rc_lag + rc_order +      (0 + mem_b | workerid) + (1 + condition | code)
+   Data: df.c3_old
+Control: glmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 8e+05))
+
+     AIC      BIC   logLik deviance df.resid 
+ 28897.5  29010.8 -14434.7  28869.5    24114 
+
+Scaled residuals: 
+    Min      1Q  Median      3Q     Max 
+-4.0194 -0.9609  0.4846  0.6903  2.8545 
+
+Random effects:
+ Groups   Name              Variance Std.Dev. Corr
+ workerid mem_b             1.212425 1.10110      
+ code     (Intercept)       0.137815 0.37123      
+          condition[S.Full] 0.003425 0.05852  0.05
+Number of obs: 24128, groups:  workerid, 760; code, 96
+
+Fixed effects:
+                                           Estimate Std. Error z value Pr(>|z|)    
+(Intercept)                               0.5936356  0.0650333   9.128  < 2e-16 ***
+repVoice[S.SAME]                          0.3055376  0.0519846   5.877 4.17e-09 ***
+condition[S.Full]                         0.3142974  0.0531915   5.909 3.45e-09 ***
+mem_b                                     0.3110074  0.0979234   3.176  0.00149 ** 
+rc_lag                                   -0.6778865  0.1482054  -4.574 4.79e-06 ***
+rc_order                                  0.0632395  0.1108658   0.570  0.56840    
+repVoice[S.SAME]:condition[S.Full]       -0.0582049  0.0519715  -1.120  0.26274    
+repVoice[S.SAME]:mem_b                   -0.1830653  0.0872900  -2.097  0.03598 *  
+condition[S.Full]:mem_b                   0.0008417  0.0978364   0.009  0.99314    
+repVoice[S.SAME]:condition[S.Full]:mem_b  0.1233983  0.0872439   1.414  0.15724    
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+Correlation of Fixed Effects:
+                  (Intr) rpV[S.SAME] cn[S.F] mem_b  rc_lag rc_rdr rpV[S.SAME]:[S.F] rV[S.SAME]:_ c[S.F]:
+rpV[S.SAME]        0.052                                                                                
+cndtn[S.Fl]        0.023  0.024                                                                         
+mem_b             -0.711 -0.055      -0.021                                                             
+rc_lag            -0.002 -0.006      -0.003   0.000                                                     
+rc_order           0.002  0.003       0.002  -0.005 -0.892                                              
+rpV[S.SAME]:[S.F]  0.020  0.026       0.063  -0.021 -0.004  0.005                                       
+rV[S.SAME]:_      -0.050 -0.959      -0.023   0.058  0.008 -0.007 -0.026                                
+cndt[S.F]:_       -0.017 -0.021      -0.870   0.028  0.001 -0.002 -0.055             0.023              
+rV[S.SAME]:[S.F]: -0.019 -0.026      -0.060   0.023  0.005 -0.006 -0.960             0.033        0.057 

@@ -1,0 +1,38 @@
+Generalized linear mixed model fit by maximum likelihood (Laplace Approximation) ['glmerMod']
+ Family: binomial  ( logit )
+Formula: correct ~ rc_dist * condition + rc_lag + rc_order + (1 | workerid) +      (1 + rc_dist | code)
+   Data: df.c3_diff
+Control: glmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 8e+05))
+
+     AIC      BIC   logLik deviance df.resid 
+ 15220.6  15294.5  -7600.3  15200.6    12044 
+
+Scaled residuals: 
+    Min      1Q  Median      3Q     Max 
+-3.0719 -0.9645  0.5243  0.7317  2.1718 
+
+Random effects:
+ Groups   Name        Variance Std.Dev. Corr 
+ workerid (Intercept) 0.4011   0.6334        
+ code     (Intercept) 0.1547   0.3933        
+          rc_dist     0.2226   0.4718   -0.40
+Number of obs: 12054, groups:  workerid, 760; code, 96
+
+Fixed effects:
+                          Estimate Std. Error z value Pr(>|z|)    
+(Intercept)                0.57795    0.05078  11.381  < 2e-16 ***
+rc_dist                   -0.79226    0.16870  -4.696 2.65e-06 ***
+condition[S.Full]          0.30463    0.03072   9.917  < 2e-16 ***
+rc_lag                    -0.61658    0.20860  -2.956  0.00312 ** 
+rc_order                   0.11448    0.15527   0.737  0.46096    
+rc_dist:condition[S.Full]  0.04024    0.14762   0.273  0.78518    
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+Correlation of Fixed Effects:
+            (Intr) rc_dst c[S.F] rc_lag rc_rdr
+rc_dist     -0.110                            
+cndtn[S.Fl]  0.023 -0.039                     
+rc_lag      -0.006  0.001 -0.006              
+rc_order     0.001 -0.002  0.003 -0.895       
+rc_ds:[S.F] -0.021  0.006 -0.026  0.006 -0.009

@@ -1,0 +1,44 @@
+Generalized linear mixed model fit by maximum likelihood (Laplace Approximation) ['glmerMod']
+ Family: binomial  ( logit )
+Formula: correct ~ repVoice * condition * stimType * talkerType + rc_lag +      (1 + repVoice + stimType | workerid) + (1 + repVoice + talkerType |      code)
+   Data: df.rm_old
+Control: glmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 8e+05))
+
+     AIC      BIC   logLik deviance df.resid 
+ 34180.5  34421.4 -17061.2  34122.5    29960 
+
+Scaled residuals: 
+    Min      1Q  Median      3Q     Max 
+-5.3149 -0.8689  0.4326  0.6454  2.5966 
+
+Random effects:
+ Groups   Name                  Variance Std.Dev. Corr       
+ workerid (Intercept)           0.541626 0.73595             
+          repVoice[S.SAME]      0.016134 0.12702   0.25      
+          stimType[S.genStim]   0.046584 0.21583  -0.35 -0.11
+ code     (Intercept)           0.161649 0.40206             
+          repVoice[S.SAME]      0.005924 0.07697  -0.42      
+          talkerType[S.genTalk] 0.011566 0.10755   0.17  0.00
+Number of obs: 29989, groups:  workerid, 947; code, 128
+
+Fixed effects:
+                                                                              Estimate Std. Error z value Pr(>|z|)    
+(Intercept)                                                                   0.953796   0.049767  19.165  < 2e-16 ***
+repVoice[S.SAME]                                                              0.222491   0.016993  13.093  < 2e-16 ***
+condition[S.Full]                                                             0.359595   0.027825  12.923  < 2e-16 ***
+stimType[S.genStim]                                                          -0.267579   0.044099  -6.068 1.30e-09 ***
+talkerType[S.genTalk]                                                        -0.105399   0.017665  -5.967 2.42e-09 ***
+rc_lag                                                                       -0.482224   0.062091  -7.766 8.08e-15 ***
+repVoice[S.SAME]:condition[S.Full]                                            0.040786   0.014530   2.807  0.00500 ** 
+repVoice[S.SAME]:stimType[S.genStim]                                         -0.022518   0.016059  -1.402  0.16086    
+condition[S.Full]:stimType[S.genStim]                                         0.003007   0.015655   0.192  0.84767    
+repVoice[S.SAME]:talkerType[S.genTalk]                                       -0.030565   0.013765  -2.221  0.02638 *  
+condition[S.Full]:talkerType[S.genTalk]                                       0.025971   0.013749   1.889  0.05891 .  
+stimType[S.genStim]:talkerType[S.genTalk]                                     0.040570   0.017619   2.303  0.02130 *  
+repVoice[S.SAME]:condition[S.Full]:stimType[S.genStim]                        0.005277   0.013773   0.383  0.70160    
+repVoice[S.SAME]:condition[S.Full]:talkerType[S.genTalk]                     -0.011327   0.013745  -0.824  0.40986    
+repVoice[S.SAME]:stimType[S.genStim]:talkerType[S.genTalk]                    0.020135   0.013745   1.465  0.14294    
+condition[S.Full]:stimType[S.genStim]:talkerType[S.genTalk]                  -0.036962   0.013742  -2.690  0.00715 ** 
+repVoice[S.SAME]:condition[S.Full]:stimType[S.genStim]:talkerType[S.genTalk] -0.032151   0.013743  -2.339  0.01932 *  
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1

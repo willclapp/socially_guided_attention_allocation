@@ -1,0 +1,22 @@
+$emmeans
+ condition repVoice emmean     SE  df asymp.LCL asymp.UCL
+ FA        SAME      1.171 0.0803 Inf     1.013     1.328
+ DA        SAME      0.605 0.0800 Inf     0.449     0.762
+ FA        DIFF      1.070 0.0837 Inf     0.906     1.234
+ DA        DIFF      0.333 0.0832 Inf     0.170     0.497
+
+Results are given on the logit (not the response) scale. 
+Confidence level used: 0.95 
+
+$contrasts
+ contrast          estimate     SE  df z.ratio p.value
+ FA SAME - DA SAME    0.565 0.0979 Inf   5.774  <.0001
+ FA SAME - FA DIFF    0.101 0.0685 Inf   1.473  0.4538
+ FA SAME - DA DIFF    0.837 0.0986 Inf   8.491  <.0001
+ DA SAME - FA DIFF   -0.464 0.0987 Inf  -4.704  <.0001
+ DA SAME - DA DIFF    0.272 0.0634 Inf   4.287  0.0001
+ FA DIFF - DA DIFF    0.736 0.0969 Inf   7.595  <.0001
+
+Results are given on the log odds ratio (not the response) scale. 
+P value adjustment: tukey method for comparing a family of 4 estimates 
+

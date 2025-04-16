@@ -1,0 +1,56 @@
+Linear mixed model fit by REML. t-tests use Satterthwaite's method ['lmerModLmerTest']
+Formula: d_stimTalk ~ repVoice * attention_condition * stimType * talkerType +      (1 + stimType + talkerType | workerid)
+   Data: df.e1_d_stim_talk
+Control: lmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 8e+05))
+
+REML criterion at convergence: 17370.8
+
+Scaled residuals: 
+    Min      1Q  Median      3Q     Max 
+-3.3449 -0.5872  0.0050  0.6078  3.0168 
+
+Random effects:
+ Groups   Name                   Variance Std.Dev. Corr     
+ workerid (Intercept)            0.32587  0.5709            
+          stimType[S.specStim]   0.04575  0.2139   0.26     
+          talkerType[S.specTalk] 0.04261  0.2064   0.07 0.03
+ Residual                        0.37538  0.6127            
+Number of obs: 7576, groups:  workerid, 947
+
+Fixed effects:
+                                                                                           Estimate Std. Error         df t value
+(Intercept)                                                                               1.126e+00  1.984e-02  9.450e+02  56.750
+repVoice[S.SAME]                                                                          9.449e-02  7.039e-03  4.725e+03  13.424
+attention_condition[S.Full]                                                               2.931e-01  1.984e-02  9.450e+02  14.773
+stimType[S.specStim]                                                                      1.466e-01  9.893e-03  9.450e+02  14.819
+talkerType[S.specTalk]                                                                    6.261e-02  9.723e-03  9.450e+02   6.439
+repVoice[S.SAME]:attention_condition[S.Full]                                              8.745e-03  7.039e-03  4.725e+03   1.242
+repVoice[S.SAME]:stimType[S.specStim]                                                     1.875e-03  7.039e-03  4.725e+03   0.266
+attention_condition[S.Full]:stimType[S.specStim]                                         -2.876e-02  9.893e-03  9.450e+02  -2.907
+repVoice[S.SAME]:talkerType[S.specTalk]                                                   9.696e-03  7.039e-03  4.725e+03   1.377
+attention_condition[S.Full]:talkerType[S.specTalk]                                       -1.338e-02  9.723e-03  9.450e+02  -1.376
+stimType[S.specStim]:talkerType[S.specTalk]                                               1.970e-02  7.039e-03  4.725e+03   2.798
+repVoice[S.SAME]:attention_condition[S.Full]:stimType[S.specStim]                        -6.248e-03  7.039e-03  4.725e+03  -0.888
+repVoice[S.SAME]:attention_condition[S.Full]:talkerType[S.specTalk]                       4.250e-03  7.039e-03  4.725e+03   0.604
+repVoice[S.SAME]:stimType[S.specStim]:talkerType[S.specTalk]                              6.477e-03  7.039e-03  4.725e+03   0.920
+attention_condition[S.Full]:stimType[S.specStim]:talkerType[S.specTalk]                  -2.322e-02  7.039e-03  4.725e+03  -3.299
+repVoice[S.SAME]:attention_condition[S.Full]:stimType[S.specStim]:talkerType[S.specTalk] -1.440e-02  7.039e-03  4.725e+03  -2.046
+                                                                                         Pr(>|t|)    
+(Intercept)                                                                               < 2e-16 ***
+repVoice[S.SAME]                                                                          < 2e-16 ***
+attention_condition[S.Full]                                                               < 2e-16 ***
+stimType[S.specStim]                                                                      < 2e-16 ***
+talkerType[S.specTalk]                                                                   1.91e-10 ***
+repVoice[S.SAME]:attention_condition[S.Full]                                             0.214196    
+repVoice[S.SAME]:stimType[S.specStim]                                                    0.789992    
+attention_condition[S.Full]:stimType[S.specStim]                                         0.003729 ** 
+repVoice[S.SAME]:talkerType[S.specTalk]                                                  0.168432    
+attention_condition[S.Full]:talkerType[S.specTalk]                                       0.169040    
+stimType[S.specStim]:talkerType[S.specTalk]                                              0.005164 ** 
+repVoice[S.SAME]:attention_condition[S.Full]:stimType[S.specStim]                        0.374758    
+repVoice[S.SAME]:attention_condition[S.Full]:talkerType[S.specTalk]                      0.546008    
+repVoice[S.SAME]:stimType[S.specStim]:talkerType[S.specTalk]                             0.357528    
+attention_condition[S.Full]:stimType[S.specStim]:talkerType[S.specTalk]                  0.000979 ***
+repVoice[S.SAME]:attention_condition[S.Full]:stimType[S.specStim]:talkerType[S.specTalk] 0.040779 *  
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1

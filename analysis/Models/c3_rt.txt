@@ -1,0 +1,47 @@
+Linear mixed model fit by REML. t-tests use Satterthwaite's method ['lmerModLmerTest']
+Formula: logRT ~ repVoice * condition * mem_b + rc_lag + rc_order + rc_dur +      (0 + mem_b | workerid) + (1 + condition | code)
+   Data: df.c3_rt
+Control: lmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 8e+05))
+
+REML criterion at convergence: 36410.6
+
+Scaled residuals: 
+    Min      1Q  Median      3Q     Max 
+-3.6388 -0.5594 -0.0029  0.5781  3.5716 
+
+Random effects:
+ Groups   Name              Variance  Std.Dev. Corr 
+ workerid mem_b             0.3712053 0.60927       
+ code     (Intercept)       0.0093614 0.09675       
+          condition[S.Full] 0.0008443 0.02906  -0.09
+ Residual                   0.5453037 0.73845       
+Number of obs: 15630, groups:  workerid, 760; code, 96
+
+Fixed effects:
+                                           Estimate Std. Error         df t value Pr(>|t|)    
+(Intercept)                               6.164e+00  2.515e-02  1.836e+03 245.064  < 2e-16 ***
+repVoice[S.SAME]                         -5.510e-02  2.275e-02  1.488e+04  -2.422  0.01547 *  
+condition[S.Full]                        -2.576e-02  2.319e-02  6.961e+03  -1.111  0.26670    
+mem_b                                    -1.560e-01  4.471e-02  6.264e+03  -3.488  0.00049 ***
+rc_lag                                    1.183e-01  6.082e-02  1.491e+04   1.945  0.05185 .  
+rc_order                                 -2.955e-01  4.557e-02  1.493e+04  -6.484 9.21e-11 ***
+rc_dur                                   -7.231e-01  7.128e-02  9.443e+02 -10.145  < 2e-16 ***
+repVoice[S.SAME]:condition[S.Full]       -2.596e-02  2.256e-02  1.482e+04  -1.151  0.24986    
+repVoice[S.SAME]:mem_b                    4.992e-02  3.793e-02  1.490e+04   1.316  0.18814    
+condition[S.Full]:mem_b                   9.184e-03  4.451e-02  6.180e+03   0.206  0.83655    
+repVoice[S.SAME]:condition[S.Full]:mem_b  2.398e-02  3.755e-02  1.484e+04   0.639  0.52305    
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+Correlation of Fixed Effects:
+                  (Intr) rpV[S.SAME] cn[S.F] mem_b  rc_lag rc_rdr rc_dur rpV[S.SAME]:[S.F] rV[S.SAME]:_ c[S.F]:
+rpV[S.SAME]       -0.071                                                                                       
+cndtn[S.Fl]       -0.148  0.034                                                                                
+mem_b             -0.770  0.061       0.129                                                                    
+rc_lag             0.010 -0.008      -0.003  -0.003                                                            
+rc_order          -0.006  0.011       0.005   0.004 -0.890                                                     
+rc_dur             0.095  0.131       0.014  -0.092 -0.010  0.015                                              
+rpV[S.SAME]:[S.F]  0.030 -0.155      -0.092  -0.025 -0.003  0.005  0.008                                       
+rV[S.SAME]:_       0.065 -0.965      -0.031  -0.060  0.010 -0.014 -0.139  0.148                                
+cndt[S.F]:_        0.120 -0.026      -0.829  -0.113 -0.002 -0.001 -0.012  0.075             0.024              
+rV[S.SAME]:[S.F]: -0.027  0.148       0.086   0.023  0.005 -0.006 -0.010 -0.964            -0.148       -0.074 

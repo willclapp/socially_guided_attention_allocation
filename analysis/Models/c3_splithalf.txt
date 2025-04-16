@@ -1,0 +1,19 @@
+
+Call:
+lm(formula = correlation ~ corr_type, data = corr_long)
+
+Residuals:
+    Min      1Q  Median      3Q     Max 
+-5.9567 -0.1991  0.0878  0.3270  1.1858 
+
+Coefficients:
+                      Estimate Std. Error t value Pr(>|t|)    
+(Intercept)            0.47573    0.02168   21.95   <2e-16 ***
+corr_typecorr_AB_shuf -0.80192    0.03065  -26.16   <2e-16 ***
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+Residual standard error: 0.6854 on 1998 degrees of freedom
+Multiple R-squared:  0.2551,	Adjusted R-squared:  0.2548 
+F-statistic: 684.4 on 1 and 1998 DF,  p-value: < 2.2e-16
+

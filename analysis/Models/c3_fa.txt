@@ -1,0 +1,35 @@
+Generalized linear mixed model fit by maximum likelihood (Laplace Approximation) ['glmerMod']
+ Family: binomial  ( logit )
+Formula: correct ~ condition * mem_b + rc_order + (0 + mem_b | workerid) +      (1 | code)
+   Data: df.c3_new
+Control: glmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 8e+05))
+
+     AIC      BIC   logLik deviance df.resid 
+ 24975.5  25032.2 -12480.8  24961.5    24121 
+
+Scaled residuals: 
+    Min      1Q  Median      3Q     Max 
+-5.1336 -0.6482  0.3795  0.5831  2.9481 
+
+Random effects:
+ Groups   Name        Variance Std.Dev.
+ workerid mem_b       2.5846   1.6077  
+ code     (Intercept) 0.2661   0.5158  
+Number of obs: 24128, groups:  workerid, 760; code, 96
+
+Fixed effects:
+                        Estimate Std. Error z value Pr(>|z|)    
+(Intercept)              0.89577    0.07706  11.624  < 2e-16 ***
+condition[S.Full]        0.19575    0.05614   3.487 0.000488 ***
+mem_b                    0.70817    0.11336   6.247 4.18e-10 ***
+rc_order                -0.47387    0.05484  -8.641  < 2e-16 ***
+condition[S.Full]:mem_b  0.24091    0.11273   2.137 0.032598 *  
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+Correlation of Fixed Effects:
+            (Intr) cn[S.F] mem_b  rc_rdr
+cndtn[S.Fl]  0.033                      
+mem_b       -0.591 -0.040               
+rc_order    -0.015 -0.003   0.001       
+cndt[S.F]:_ -0.029 -0.814   0.052 -0.002

@@ -1,0 +1,64 @@
+Generalized linear mixed model fit by maximum likelihood (Laplace Approximation) ['glmerMod']
+ Family: binomial  ( logit )
+Formula: correct ~ repVoice * condition * rc_lag + rc_order + repVoice:rc_order +  
+    condition:rc_order + repVoice:condition:rc_order + (1 | workerid) +      (1 + repVoice + condition | code)
+   Data: df.p1_old
+Control: glmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 8e+05))
+
+     AIC      BIC   logLik deviance df.resid 
+ 12267.8  12405.2  -6114.9  12229.8    10209 
+
+Scaled residuals: 
+    Min      1Q  Median      3Q     Max 
+-3.7639 -0.9504  0.4854  0.6784  2.1853 
+
+Random effects:
+ Groups   Name             Variance Std.Dev. Corr       
+ workerid (Intercept)      0.388897 0.62362             
+ code     (Intercept)      0.189923 0.43580             
+          repVoice[S.SAME] 0.005174 0.07193  -0.49      
+          condition[S.FA]  0.010023 0.10012  -0.18 -0.02
+Number of obs: 10228, groups:  workerid, 321; code, 96
+
+Fixed effects:
+                                          Estimate Std. Error z value Pr(>|z|)    
+(Intercept)                                0.79737    0.06120  13.029  < 2e-16 ***
+repVoice[S.SAME]                           0.09420    0.02400   3.925 8.66e-05 ***
+condition[S.FA]                            0.32736    0.04312   7.592 3.15e-14 ***
+rc_lag                                     0.35229    0.22977   1.533 0.125216    
+rc_order                                  -0.79598    0.17283  -4.605 4.12e-06 ***
+repVoice[S.SAME]:condition[S.FA]          -0.04263    0.02271  -1.878 0.060440 .  
+repVoice[S.SAME]:rc_lag                    0.22410    0.23285   0.962 0.335820    
+condition[S.FA]:rc_lag                     0.96871    0.22992   4.213 2.52e-05 ***
+repVoice[S.SAME]:rc_order                 -0.30662    0.17452  -1.757 0.078933 .  
+condition[S.FA]:rc_order                  -0.61561    0.17280  -3.563 0.000367 ***
+repVoice[S.SAME]:condition[S.FA]:rc_lag    0.19819    0.23247   0.853 0.393915    
+repVoice[S.SAME]:condition[S.FA]:rc_order -0.04118    0.17413  -0.236 0.813049    
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+Correlation of Fixed Effects:
+                              (Intr) rpV[S.SAME] cn[S.FA] rc_lag rc_rdr rpV[S.SAME]:[S.FA] rpVc[S.SAME]:rc_l cndtn[S.FA]:rc_l
+rpV[S.SAME]                   -0.101                                                                                         
+cndtn[S.FA]                   -0.010 -0.001                                                                                  
+rc_lag                         0.017  0.007       0.018                                                                      
+rc_order                      -0.027 -0.012      -0.021   -0.894                                                             
+rpV[S.SAME]:[S.FA]            -0.001  0.078       0.012    0.007 -0.005                                                      
+rpVc[S.SAME]:rc_l              0.002  0.040       0.004    0.016 -0.023  0.032                                               
+cndtn[S.FA]:rc_l               0.015  0.007       0.025    0.075 -0.063  0.003             -0.007                            
+rpVc[S.SAME]:rc_r             -0.004 -0.062      -0.003   -0.023  0.033 -0.036             -0.898             0.003          
+cndtn[S.FA]:rc_r              -0.016 -0.005      -0.037   -0.062  0.065 -0.010              0.003            -0.894          
+rpVc[S.SAME]:cndtn[S.FA]:rc_l  0.001  0.030       0.002   -0.006  0.002  0.042              0.072             0.015          
+rpVc[S.SAME]:cndtn[S.FA]:rc_r  0.000 -0.033      -0.005    0.002 -0.001 -0.063             -0.059            -0.023          
+                              rpVc[S.SAME]:rc_r cndtn[S.FA]:rc_r rpVc[S.SAME]:cndtn[S.FA]:rc_l
+rpV[S.SAME]                                                                                   
+cndtn[S.FA]                                                                                   
+rc_lag                                                                                        
+rc_order                                                                                      
+rpV[S.SAME]:[S.FA]                                                                            
+rpVc[S.SAME]:rc_l                                                                             
+cndtn[S.FA]:rc_l                                                                              
+rpVc[S.SAME]:rc_r                                                                             
+cndtn[S.FA]:rc_r              -0.001                                                          
+rpVc[S.SAME]:cndtn[S.FA]:rc_l -0.059            -0.023                                        
+rpVc[S.SAME]:cndtn[S.FA]:rc_r  0.062             0.033           -0.897                       

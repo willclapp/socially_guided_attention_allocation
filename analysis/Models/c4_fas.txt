@@ -1,0 +1,45 @@
+Generalized linear mixed model fit by maximum likelihood (Laplace Approximation) ['glmerMod']
+ Family: binomial  ( logit )
+Formula: 1 - correct ~ attention_condition * stimType * talkerType + rc_order +      (1 + stimType + talkerType | workerid) + (1 | code)
+   Data: df.e1_new
+Control: glmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 8e+05))
+
+     AIC      BIC   logLik deviance df.resid 
+ 30695.2  30828.1 -15331.6  30663.2    30036 
+
+Scaled residuals: 
+    Min      1Q  Median      3Q     Max 
+-2.5752 -0.5631 -0.3655  0.5904  6.6014 
+
+Random effects:
+ Groups   Name                   Variance Std.Dev. Corr     
+ workerid (Intercept)            1.00355  1.0018            
+          stimType[S.specStim]   0.01198  0.1095   0.56     
+          talkerType[S.specTalk] 0.03145  0.1773   0.11 0.34
+ code     (Intercept)            0.25831  0.5082            
+Number of obs: 30052, groups:  workerid, 947; code, 96
+
+Fixed effects:
+                                                                        Estimate Std. Error z value Pr(>|z|)    
+(Intercept)                                                             -1.34337    0.06362 -21.116  < 2e-16 ***
+attention_condition[S.Full]                                             -0.30700    0.03620  -8.481  < 2e-16 ***
+stimType[S.specStim]                                                    -0.08193    0.01649  -4.967 6.78e-07 ***
+talkerType[S.specTalk]                                                  -0.04097    0.01716  -2.388    0.017 *  
+rc_order                                                                 0.35564    0.04999   7.114 1.13e-12 ***
+attention_condition[S.Full]:stimType[S.specStim]                         0.01696    0.01519   1.117    0.264    
+attention_condition[S.Full]:talkerType[S.specTalk]                      -0.01262    0.01594  -0.792    0.428    
+stimType[S.specStim]:talkerType[S.specTalk]                             -0.01149    0.01479  -0.777    0.437    
+attention_condition[S.Full]:stimType[S.specStim]:talkerType[S.specTalk]  0.01193    0.01459   0.817    0.414    
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+Correlation of Fixed Effects:
+                (Intr) at_[S.F] stT[S.S] tT[S.T rc_rdr at_[S.F]:T[S.S] a_[S.F]:T[S.T sT[S.S]:
+attnt_[S.F]      0.026                                                                       
+stmTyp[S.S]      0.080  0.005                                                                
+tlkrTy[S.T]      0.029  0.006    0.035                                                       
+rc_order        -0.014 -0.008    0.000    0.000                                              
+at_[S.F]:T[S.S]  0.003  0.138    0.153   -0.004  0.001                                       
+a_[S.F]:T[S.T    0.003  0.045   -0.003    0.145  0.000  0.036                                
+sT[S.S]:T[S      0.002 -0.002    0.025    0.043 -0.002  0.006           0.005                
+a_[S.F]:T[S.S]: -0.001  0.002    0.007    0.001 -0.001  0.017           0.033         0.118  

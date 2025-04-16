@@ -1,0 +1,41 @@
+Linear mixed model fit by REML. t-tests use Satterthwaite's method ['lmerModLmerTest']
+Formula: logRT ~ repVoice * condition * rc_lag + rc_order + rc_dur + repVoice:rc_order +  
+    condition:rc_order + repVoice:condition:rc_order + repVoice:rc_dur +  
+    condition:rc_dur + repVoice:condition:rc_dur + (1 | workerid) +      (1 + condition | code)
+   Data: df.p1_rt
+Control: lmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 8e+05))
+
+REML criterion at convergence: 15307.4
+
+Scaled residuals: 
+    Min      1Q  Median      3Q     Max 
+-3.5145 -0.5637  0.0160  0.5776  3.5843 
+
+Random effects:
+ Groups   Name            Variance  Std.Dev. Corr 
+ workerid (Intercept)     0.1471806 0.3836        
+ code     (Intercept)     0.0116370 0.1079        
+          condition[S.FA] 0.0002957 0.0172   -0.62
+ Residual                 0.5211820 0.7219        
+Number of obs: 6656, groups:  workerid, 321; code, 96
+
+Fixed effects:
+                                            Estimate Std. Error         df t value Pr(>|t|)    
+(Intercept)                                6.009e+00  2.580e-02  3.174e+02 232.932  < 2e-16 ***
+repVoice[S.SAME]                          -1.193e-02  9.035e-03  6.314e+03  -1.321 0.186546    
+condition[S.FA]                           -4.865e-02  2.338e-02  2.938e+02  -2.080 0.038349 *  
+rc_lag                                     1.653e-01  9.181e-02  6.328e+03   1.800 0.071847 .  
+rc_order                                  -2.564e-01  6.949e-02  6.331e+03  -3.690 0.000226 ***
+rc_dur                                    -5.276e-01  7.253e-02  8.433e+02  -7.273 8.01e-13 ***
+repVoice[S.SAME]:condition[S.FA]           1.066e-02  9.039e-03  6.316e+03   1.179 0.238429    
+repVoice[S.SAME]:rc_lag                   -1.865e-01  9.308e-02  6.388e+03  -2.003 0.045183 *  
+condition[S.FA]:rc_lag                    -1.348e-02  9.184e-02  6.328e+03  -0.147 0.883274    
+repVoice[S.SAME]:rc_order                  1.593e-01  7.024e-02  6.381e+03   2.268 0.023392 *  
+condition[S.FA]:rc_order                  -6.906e-02  6.956e-02  6.337e+03  -0.993 0.320836    
+repVoice[S.SAME]:rc_dur                    6.066e-02  6.041e-02  6.384e+03   1.004 0.315321    
+condition[S.FA]:rc_dur                     3.465e-02  6.053e-02  3.547e+02   0.572 0.567353    
+repVoice[S.SAME]:condition[S.FA]:rc_lag    9.796e-02  9.297e-02  6.370e+03   1.054 0.292092    
+repVoice[S.SAME]:condition[S.FA]:rc_order -2.362e-02  7.013e-02  6.360e+03  -0.337 0.736300    
+repVoice[S.SAME]:condition[S.FA]:rc_dur   -1.130e-01  6.020e-02  6.300e+03  -1.877 0.060615 .  
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1

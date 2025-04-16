@@ -1,0 +1,30 @@
+Linear mixed model fit by REML. t-tests use Satterthwaite's method ['lmerModLmerTest']
+Formula: d_repVoice ~ repVoice * condition + (1 | workerid)
+   Data: df.p1_d
+
+REML criterion at convergence: 1106.1
+
+Scaled residuals: 
+     Min       1Q   Median       3Q      Max 
+-2.22898 -0.49156 -0.00085  0.50436  2.72011 
+
+Random effects:
+ Groups   Name        Variance Std.Dev.
+ workerid (Intercept) 0.4343   0.6590  
+ Residual             0.1032   0.3212  
+Number of obs: 644, groups:  workerid, 322
+
+Fixed effects:
+                                  Estimate Std. Error        df t value Pr(>|t|)    
+(Intercept)                        1.20250    0.03885 319.99998  30.953  < 2e-16 ***
+repVoice[S.SAME]                   0.05385    0.01266 320.00001   4.254 2.76e-05 ***
+condition[S.FA]                    0.40496    0.03885 319.99998  10.424  < 2e-16 ***
+repVoice[S.SAME]:condition[S.FA]  -0.02780    0.01266 320.00001  -2.197   0.0288 *  
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+Correlation of Fixed Effects:
+            (Intr) rpV[S.SAME] c[S.FA
+rpV[S.SAME]  0.000                   
+cndtn[S.FA] -0.012  0.000            
+rV[S.SAME]:  0.000 -0.012       0.000

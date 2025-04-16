@@ -1,0 +1,38 @@
+Linear mixed model fit by REML. t-tests use Satterthwaite's method ['lmerModLmerTest']
+Formula: logRT ~ rc_dist * condition + rc_order + rc_lag + rc_dur + (1 |      workerid) + (0 + rc_dist | code)
+   Data: df.c3_diffrt
+Control: lmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 8e+05))
+
+REML criterion at convergence: 17462.8
+
+Scaled residuals: 
+    Min      1Q  Median      3Q     Max 
+-3.6429 -0.5501  0.0107  0.5863  3.2937 
+
+Random effects:
+ Groups   Name        Variance Std.Dev.
+ workerid (Intercept) 0.135519 0.36813 
+ code     rc_dist     0.005539 0.07442 
+ Residual             0.553719 0.74412 
+Number of obs: 7359, groups:  workerid, 760; code, 96
+
+Fixed effects:
+                            Estimate Std. Error         df t value Pr(>|t|)    
+(Intercept)                  6.08429    0.01616  737.49476 376.483  < 2e-16 ***
+rc_dist                      0.20000    0.06868   93.03369   2.912 0.004495 ** 
+condition[S.Full]           -0.00749    0.01615  750.93911  -0.464 0.643004    
+rc_order                    -0.22721    0.06837 6901.09466  -3.323 0.000894 ***
+rc_lag                       0.05359    0.09173 6900.08179   0.584 0.559092    
+rc_dur                      -0.57545    0.08072 3158.39633  -7.129 1.25e-12 ***
+rc_dist:condition[S.Full]    0.07404    0.06718 7163.52256   1.102 0.270442    
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+Correlation of Fixed Effects:
+            (Intr) rc_dst c[S.F] rc_rdr rc_lag rc_dur
+rc_dist      0.024                                   
+cndtn[S.Fl] -0.037 -0.031                            
+rc_order     0.001  0.000  0.010                     
+rc_lag       0.009 -0.005 -0.013 -0.894              
+rc_dur       0.000  0.171  0.003 -0.002  0.004       
+rc_ds:[S.F] -0.033 -0.155  0.025 -0.007  0.000  0.007
