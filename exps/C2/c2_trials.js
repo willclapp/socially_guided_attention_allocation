@@ -57,16 +57,16 @@ const trials = {
 		PM01: "2",
 		PM02: "1"
 	},
-	BEL_0201_NDPARENTS: {
-		code: "BEL_0201_NDPARENTS",
+	BEL_0201_GRANDPARENTS: {
+		code: "BEL_0201_GRANDPARENTS",
 		sentence: "The twins live with their grandparents.",
 		PF01: "2",
 		PF02: "1",
 		PM01: "2",
 		PM02: "1"
 	},
-	BEL_0204_away: {
-		code: "BEL_0204_away",
+	BEL_0204_AWAY: {
+		code: "BEL_0204_AWAY",
 		sentence: "That bright light seems far away.",
 		PF01: "2",
 		PF02: "2",
