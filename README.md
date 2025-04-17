@@ -6,7 +6,7 @@ To reproduce statistical analyses, download the `analysis` folder. The analysis 
 
 The analyses associated with Chapters 2 \& 4 should be relatively straightforward to run. For Chapter 3, the script used to bootstrap the memorability composite score is in its own file, which is called `C3_calculate_memorability`. This code is relatively slow to run, so the output values are also stored in a file, `C3_mem.csv`, which can be used for the main experiment analysis. The split-half consistency test in Chapter 3 relies on a separate bootstrapping procedure. The results of that are stored in the file `C3_split_half.csv`, but can also be generated from scratch in lines 318--457. 
 
-The experiments all use the study/test recognition memory paradigm with spoken sentences heard in both blocks. To run the experiments in your own browser, follow these links for [Chapter 2](https://willclapp.github.io/socially-guided-attention/exp/exp.html), [Chapter 2](https://willclapp.github.io/socially-guided-attention/exp/exp.html), or [Chapter 4](https://willclapp.github.io/socially-guided-attention/exp/exp.html).
+The experiments all use the study/test recognition memory paradigm with spoken sentences heard in both blocks. To run the experiments in your own browser, follow these links for [Chapter 2](https://willclapp.github.io/socisocially_guided_attention_allocation/exps/C2.html), [Chapter 3](https://willclapp.github.io/socially_guided_attention_allocation/exps/C3.html), or [Chapter 4](https://willclapp.github.io/socially_guided_attention_allocation/exps/C4.html).
 
 
 
