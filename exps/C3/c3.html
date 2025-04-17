@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <script src="https://proliferate.alps.science/static/js/proliferate.js" type="text/javascript"></script>
+        <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+        <!-- jsPsych plugins -->
+        <script src="../jspsych/dist/jspsych.js"></script>
+        <script src="../jspsych/dist/plugin-html-button-response.js"></script>
+        <script src="../jspsych/dist/plugin-html-keyboard-response.js"></script>
+        <script src="../jspsych/dist/plugin-audio-button-response-mod.js"></script>
+        <script src="../jspsych/dist/plugin-audio-keyboard-response.js"></script>
+        <script src="../jspsych/dist/plugin-audio-slider-response.js"></script>
+        <script src="../jspsych/dist/plugin-audio-slider-response.js"></script>
+        <script src="../jspsych/dist/plugin-preload.js"></script>
+        <script src="../jspsych/dist/plugin-survey.js"></script>
+        <script src="../jspsych/dist/plugin-fullscreen.js"></script>
+        
+        <!-- CSS -->
+        <link href="../jspsych/dist/jspsych.css" rel="stylesheet" type="text/css" />
+        <link href="c3.css" rel="stylesheet" type="text/css" />
+        <link rel="stylesheet" href="https://unpkg.com/@jspsych/plugin-survey@0.2.1/css/survey.css">
+
+        <!-- Global js variables -->
+        <script src="../util/util.js"></script>
+        <script>
+            let preload_audio = ["../audio/silence.wav"]
+            let preload_imgs = ["../img/fixation.png"]
+            let talker_list = ["T01", "T02", "T03", "T04", "T05", "T06", "T07", "T08", "T09", "T10", "T11", "T12"]
+            const button_order = Math.floor(Math.random()*2) ? "OLD_NEW" : "NEW_OLD"
+            let attention_condition = Math.floor(Math.random()*100) < 50 ? "FA" : "DA"
+            console.log(attention_condition)
+        </script>
+
+        <!-- Other .js files -->
+        <script src="c3_social.js"></script>
+        <script src="c3_trials.js"></script>
+        <script src="c3_make_stims.js"></script>
+        <script src="c3_math.js"></script>
+        <script src="c3_instructions.js"></script>
+        <script src="c3.js"></script>
+
+        <!-- This is the name that will appear on the browser tab. -->
+        <title>Language Experiment</title>
+    </head>
+</html>
