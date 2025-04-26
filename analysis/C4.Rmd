@@ -213,7 +213,7 @@ fig6 <- df.c4_old %>%
     scale_fill_manual(values = stim_talk_c, guide = guide_legend(reverse = TRUE)) +
     ggplot2::annotate("segment", x = 0.55, xend = 1.45, y = 0.485, yend = 0.485, colour = c_Full_DIFF, size=2, alpha=0.6) +
     ggplot2::annotate("segment", x = 1.55, xend = 2.45, y = 0.485, yend = 0.485, colour = c_Divided_DIFF, size=2, alpha=0.6) +
-    labs(x='Attention / RepVoice', y = 'Proportion Hits', color="Talker Type,\nSentence Type", fill="Talker Type,\nSentence Type") 
+    labs(x='Attention', y = 'Proportion Hits', color="Talker Type,\nSentence Type", fill="Talker Type,\nSentence Type") 
 fig6
 ```
 
